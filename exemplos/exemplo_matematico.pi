@@ -1,0 +1,13 @@
+// Exemplo matemático complexo em PiLang
+// Calcula expressões matemáticas com múltiplas operações
+
+// Lê os valores de entrada
+LEIA x;
+LEIA y;
+
+// Calcula expressão complexa: x + y * 2^3
+z = y * 2 ^ 3;
+resultado = x + z;
+
+// Exibe o resultado
+ESCREVA resultado;

@@ -1,0 +1,19 @@
+// Exemplo com erros sintáticos para testes
+// Este arquivo contém erros propositalmente para testar o tratamento de erros
+
+INICIO
+    VARIAVEIS
+        a: INTEIRO
+        b: INTEIRO;
+        c: REAL;
+    FIM_VARIAVEIS
+    
+    // Erro: falta ponto e vírgula
+    LEIA a
+    
+    // Erro: expressão incompleta
+    b = a + 
+    
+    // Comando correto
+    ESCREVA b;
+FIM

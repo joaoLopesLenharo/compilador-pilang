@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Compilador PiLang Online</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background-color: #f4f4f9; margin: 0; padding: 20px; }
+        h1 { color: #333; }
+        .container { display: flex; width: 90%; max-width: 1200px; gap: 20px; }
+        .editor-area, .output-area { flex: 1; display: flex; flex-direction: column; }
+        textarea { width: 100%; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; font-family: monospace; font-size: 16px; padding: 10px; }
+        #codigo { height: 500px; }
+        #entradas { height: 100px; }
+        #output { height: 620px; background-color: #2d2d2d; color: #f1f1f1; white-space: pre-wrap; padding: 10px; border-radius: 5px; }
+        #feedback { padding: 10px; margin-top: -5px; border-radius: 0 0 5px 5px; text-align: center; font-weight: bold; transition: all 0.3s; }
+        .feedback-sucesso { background-color: #d4edda; color: #155724; }
+        .feedback-erro { background-color: #f8d7da; color: #721c24; }
+        button { background-color: #4CAF50; color: white; padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 10px; align-self: flex-start; }
+        button:hover { background-color: #45a049; }
+        label { margin-top: 15px; font-weight: bold; color: #555; }
+    </style>
+</head>
+<body>
+    <h1>Compilador PiLang Online</h1>
+    <div class="container">
+        <div class="editor-area">
+            <label for="codigo">Código Fonte:</label>
+            <textarea id="codigo" placeholder="Escreva seu código PiLang aqui..."></textarea>
+            <div id="feedback">Digite seu código para começar.</div>
+
+            <label for="entradas">Entradas para o comando LEIA (um valor por linha):</label>
+            <textarea id="entradas" placeholder="10&#10;20"></textarea>
+
+            <button onclick="executarCodigo()">Executar</button>
+        </div>
+        <div class="output-area">
+            <label for="output">Saída do Programa:</label>
+            <pre id="output"></pre>
+        </div>
+    </div>
+
+    <script>
+        const editorCodigo = document.getElementById('codigo');
+        const feedbackDiv = document.getElementById('feedback');
+        const outputDiv = document.getElementById('output');
+        const entradasText = document.getElementById('entradas');
+        let debounceTimer;
+
+        // Análise em tempo real
+        editorCodigo.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(async () => {
+                const codigo = editorCodigo.value;
+                try {
+                    const response = await fetch('http://127.0.0.1:5000/analisar', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ codigo })
+                    });
+                    const result = await response.json();
+                    feedbackDiv.textContent = result.mensagem;
+                    feedbackDiv.className = result.status === 'sucesso' ? 'feedback-sucesso' : 'feedback-erro';
+                    if(result.linha) {
+                        feedbackDiv.textContent += ` (Linha: ${result.linha}, Coluna: ${result.coluna})`;
+                    }
+                } catch (error) {
+                    feedbackDiv.textContent = 'Erro de conexão com o servidor de análise.';
+                    feedbackDiv.className = 'feedback-erro';
+                }
+            }, 500);
+        });
+
+        // Execução do código
+        async function executarCodigo() {
+            const codigo = editorCodigo.value;
+            const entradas = entradasText.value.trim().split('\n').filter(line => line);
+            outputDiv.textContent = 'Executando...';
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/executar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ codigo, entradas })
+                });
+                const result = await response.json();
+                outputDiv.textContent = result.output;
+            } catch (error) {
+                outputDiv.textContent = 'Erro de conexão com o servidor de execução.';
+            }
+        }
+    </script>
+</body>
+</html>

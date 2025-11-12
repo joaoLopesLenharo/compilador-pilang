@@ -1,0 +1,12 @@
+// Exemplo com números reais em PiLang
+// Calcula a média de dois números reais
+
+// Lê os dois números reais
+LEIA num1;
+LEIA num2;
+
+// Calcula a média
+media = (num1 + num2) / 2;
+
+// Exibe o resultado
+ESCREVA media;
