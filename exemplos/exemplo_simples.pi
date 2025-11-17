@@ -1,12 +1,20 @@
 // Exemplo simples de programa em PiLang
 // Calcula a soma de dois números inteiros
 
-// Lê os dois números
-LEIA a;
-LEIA b;
+INICIO
+    VARIAVEIS
+        a: INTEIRO;
+        b: INTEIRO;
+        resultado: INTEIRO;
+    FIM_VARIAVEIS
 
-// Calcula a soma
-resultado = a + b;
+    // Lê os dois números
+    LEIA a;
+    LEIA b;
 
-// Exibe o resultado
-ESCREVA resultado;
+    // Calcula a soma
+    resultado = a + b;
+
+    // Exibe o resultado
+    ESCREVA resultado;
+FIM

@@ -15,10 +15,17 @@ class InterpretadorPiLang:
         self.indice_entrada = 0
     
     def executar_programa(self, programa: Programa):
-        """Executa um programa PiLang completo"""
-        print("\n=== EXECUÇÃO DO PROGRAMA ===")
+        """Executa um programa DRAMATICA completo"""
+        print(f"\n=== EXECUÇÃO DA CENA: {programa.nome_cena} ===")
+        print(f"Personagem: {programa.personagem.nome}")
         
-        # Executa os comandos (variáveis são criadas automaticamente na primeira atribuição)
+        # Processa declarações de variáveis do personagem (inicializa com valor padrão)
+        for declaracao in programa.personagem.declaracoes:
+            if declaracao.tipo == "NUMBER":
+                self.variaveis[declaracao.nome] = 0
+            print(f"Declarada: {declaracao.nome}: {declaracao.tipo}")
+        
+        # Executa os comandos
         for comando in programa.comandos:
             self.executar_comando(comando)
         
@@ -60,15 +67,12 @@ class InterpretadorPiLang:
             self.variaveis[nome_variavel] = 0
 
     def executar_escreva(self, comando: ComandoEscrita):
-        """Executa comando ESCREVA"""
+        """Executa comando says (escrita teatral)"""
         try:
-            if comando.variavel in self.variaveis:
-                valor = self.variaveis[comando.variavel]
-                print(f"ESCREVA -> {valor}")
-            else:
-                print(f"Erro: variável '{comando.variavel}' não declarada")
+            valor = self.avaliar_expressao(comando.expressao)
+            print(f"{comando.personagem} says: {valor}")
         except Exception as e:
-            print(f"Erro ao executar ESCREVA: {e}")
+            print(f"Erro ao executar says: {e}")
     
     def executar_atribuicao(self, comando: ComandoAtribuicao):
         """Executa comando de atribuição"""

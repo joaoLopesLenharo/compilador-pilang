@@ -1,6 +1,9 @@
 // Exemplo sem declaração de variáveis em PiLang
 // Programa mínimo que apenas lê e escreve
+// Nota: mesmo sem VARIAVEIS, o programa precisa de INICIO/FIM
 
-// Lê um valor e o escreve de volta
-LEIA a;
-ESCREVA a;
+INICIO
+    // Lê um valor e o escreve de volta
+    LEIA a;
+    ESCREVA a;
+FIM

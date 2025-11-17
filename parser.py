@@ -2,10 +2,24 @@ from tokens import Token, TipoToken
 from typing import List, Union
 
 
-# Classes para representar a árvore sintática abstrata (AST)
+# Classes para representar a árvore sintática abstrata (AST) - DRAMATICA
 class Programa:
-    def __init__(self, comandos: List['Comando']):
+    def __init__(self, nome_cena: str, personagem: 'Personagem', comandos: List['Comando']):
+        self.nome_cena = nome_cena
+        self.personagem = personagem
         self.comandos = comandos
+
+
+class Personagem:
+    def __init__(self, nome: str, declaracoes: List['Declaracao']):
+        self.nome = nome
+        self.declaracoes = declaracoes
+
+
+class Declaracao:
+    def __init__(self, nome: str, tipo: str):
+        self.nome = nome
+        self.tipo = tipo  # 'NUMBER'
 
 
 class Comando:
@@ -18,8 +32,9 @@ class ComandoLeitura(Comando):
 
 
 class ComandoEscrita(Comando):
-    def __init__(self, variavel: str):
-        self.variavel = variavel
+    def __init__(self, personagem: str, expressao: 'Expressao'):
+        self.personagem = personagem
+        self.expressao = expressao
 
 
 class ComandoAtribuicao(Comando):
@@ -102,18 +117,104 @@ class Parser:
             )
     
     def parser_programa(self) -> Programa:
-        """<programa> ::= <comandos>"""
+        """<programa> ::= scene IDENTIFICADOR : <personagem> <comandos> FIM_CENA"""
+        # Consome scene
+        self.consumir(TipoToken.SCENE, "Esperado 'scene' no início do programa")
+        
+        # Nome da cena
+        nome_cena_token = self.consumir(TipoToken.IDENTIFICADOR, "Esperado nome da cena após 'scene'")
+        nome_cena = nome_cena_token.lexema
+        
+        # Dois pontos
+        self.consumir(TipoToken.DOIS_PONTOS, "Esperado ':' após nome da cena")
+        
+        # Parse personagem (obrigatório)
+        personagem = self.parser_personagem()
+        
+        # Parse comandos
         comandos = self.parser_comandos()
-        return Programa(comandos)
+        
+        # Consome FIM_CENA
+        self.consumir(TipoToken.FIM_CENA, "Esperado 'FIM_CENA' no final do programa")
+        
+        return Programa(nome_cena, personagem, comandos)
+    
+    def parser_personagem(self) -> Personagem:
+        """<personagem> ::= character IDENTIFICADOR : <declaracao_variaveis>"""
+        # Consome character
+        self.consumir(TipoToken.CHARACTER, "Esperado 'character'")
+        
+        # Nome do personagem
+        nome_token = self.consumir(TipoToken.IDENTIFICADOR, "Esperado nome do personagem")
+        nome = nome_token.lexema
+        
+        # Dois pontos
+        self.consumir(TipoToken.DOIS_PONTOS, "Esperado ':' após nome do personagem")
+        
+        # Parse declarações de variáveis
+        declaracoes = self.parser_declaracao_variaveis()
+        
+        return Personagem(nome, declaracoes)
+    
+    def parser_declaracao_variaveis(self) -> List[Declaracao]:
+        """<declaracao_variaveis> ::= memory : <lista_declaracoes> FIM_MEMORY | ε"""
+        declaracoes = []
+        
+        # Se não houver memory, retorna lista vazia (declarações são opcionais)
+        if not self.verificar(TipoToken.MEMORY):
+            return declaracoes
+        
+        # Consome memory
+        self.consumir(TipoToken.MEMORY, "Esperado 'memory'")
+        
+        # Dois pontos
+        self.consumir(TipoToken.DOIS_PONTOS, "Esperado ':' após 'memory'")
+        
+        # Parse lista de declarações
+        declaracoes = self.parser_lista_declaracoes()
+        
+        # Consome FIM_MEMORY
+        self.consumir(TipoToken.FIM_MEMORY, "Esperado 'FIM_MEMORY' após declarações")
+        
+        return declaracoes
+    
+    def parser_lista_declaracoes(self) -> List[Declaracao]:
+        """<lista_declaracoes> ::= <declaracao> <lista_declaracoes> | <declaracao>"""
+        declaracoes = []
+        
+        # Continua enquanto houver declarações (identificadores seguidos de :)
+        while self.verificar(TipoToken.IDENTIFICADOR):
+            declaracao = self.parser_declaracao()
+            declaracoes.append(declaracao)
+        
+        return declaracoes
+    
+    def parser_declaracao(self) -> Declaracao:
+        """<declaracao> ::= IDENTIFICADOR : NUMBER ;"""
+        # Nome da variável
+        nome_token = self.consumir(TipoToken.IDENTIFICADOR, "Esperado identificador na declaração")
+        nome = nome_token.lexema
+        
+        # Dois pontos
+        self.consumir(TipoToken.DOIS_PONTOS, "Esperado ':' após identificador")
+        
+        # Tipo NUMBER
+        self.consumir(TipoToken.NUMBER, "Esperado tipo 'number'")
+        
+        # Ponto e vírgula
+        self.consumir(TipoToken.PONTO_VIRGULA, "Esperado ';' após declaração")
+        
+        return Declaracao(nome, "NUMBER")
     
     def parser_comandos(self) -> List[Comando]:
         """<comandos> ::= <comando> <comandos> | <comando>"""
         comandos = []
         
-        # Continua enquanto houver comandos válidos
+        # Continua enquanto houver comandos válidos (até encontrar FIM_CENA ou EOF)
         while (not self.verificar(TipoToken.EOF) and
+               not self.verificar(TipoToken.FIM_CENA) and
                (self.verificar(TipoToken.LEIA) or 
-                self.verificar(TipoToken.ESCREVA) or 
+                self.verificar(TipoToken.SAYS) or 
                 self.verificar(TipoToken.IDENTIFICADOR))):
             
             comando = self.parser_comando()
@@ -125,13 +226,15 @@ class Parser:
         """<comando> ::= <comando_leitura> | <comando_escrita> | <comando_atribuicao>"""
         if self.verificar(TipoToken.LEIA):
             return self.parser_comando_leitura()
-        elif self.verificar(TipoToken.ESCREVA):
-            return self.parser_comando_escrita()
         elif self.verificar(TipoToken.IDENTIFICADOR):
-            return self.parser_comando_atribuicao()
+            # Precisa fazer lookahead para distinguir entre "Personagem says" e "variavel ="
+            if self.posicao + 1 < len(self.tokens) and self.tokens[self.posicao + 1].tipo == TipoToken.SAYS:
+                return self.parser_comando_escrita()
+            else:
+                return self.parser_comando_atribuicao()
         else:
             raise ErroSintatico(
-                "Esperado comando (LEIA, ESCREVA ou atribuição)",
+                "Esperado comando (LEIA, says ou atribuição)",
                 self.token_atual.linha,
                 self.token_atual.coluna
             )
@@ -148,15 +251,21 @@ class Parser:
         return ComandoLeitura(variavel)
     
     def parser_comando_escrita(self) -> ComandoEscrita:
-        """<comando_escrita> ::= ESCREVA IDENTIFICADOR ;"""
-        self.consumir(TipoToken.ESCREVA, "Esperado 'ESCREVA'")
+        """<comando_escrita> ::= IDENTIFICADOR says <expressao> ;"""
+        # Nome do personagem
+        personagem_token = self.consumir(TipoToken.IDENTIFICADOR, "Esperado nome do personagem")
+        personagem = personagem_token.lexema
         
-        variavel_token = self.consumir(TipoToken.IDENTIFICADOR, "Esperado identificador após ESCREVA")
-        variavel = variavel_token.lexema
+        # says
+        self.consumir(TipoToken.SAYS, "Esperado 'says' após nome do personagem")
         
-        self.consumir(TipoToken.PONTO_VIRGULA, "Esperado ';' após comando ESCREVA")
+        # Expressão (pode ser variável ou número)
+        expressao = self.parser_expressao()
         
-        return ComandoEscrita(variavel)
+        # Ponto e vírgula
+        self.consumir(TipoToken.PONTO_VIRGULA, "Esperado ';' após comando says")
+        
+        return ComandoEscrita(personagem, expressao)
     
     def parser_comando_atribuicao(self) -> ComandoAtribuicao:
         """<comando_atribuicao> ::= IDENTIFICADOR = <expressao> ;"""
@@ -271,15 +380,22 @@ class Parser:
         indentacao = "  " * nivel
         
         if isinstance(no, Programa):
-            print(f"{indentacao}Programa:")
+            print(f"{indentacao}Programa (Cena: {no.nome_cena}):")
+            print(f"{indentacao}  Personagem: {no.personagem.nome}")
+            if no.personagem.declaracoes:
+                print(f"{indentacao}    Declarações:")
+                for decl in no.personagem.declaracoes:
+                    print(f"{indentacao}      {decl.nome}: {decl.tipo}")
+            print(f"{indentacao}  Comandos:")
             for comando in no.comandos:
-                self.imprimir_ast(comando, nivel + 1)
+                self.imprimir_ast(comando, nivel + 2)
         
         elif isinstance(no, ComandoLeitura):
             print(f"{indentacao}Comando Leitura: LEIA {no.variavel}")
         
         elif isinstance(no, ComandoEscrita):
-            print(f"{indentacao}Comando Escrita: ESCREVA {no.variavel}")
+            print(f"{indentacao}Comando Escrita: {no.personagem} says")
+            self.imprimir_ast(no.expressao, nivel + 1)
         
         elif isinstance(no, ComandoAtribuicao):
             print(f"{indentacao}Comando Atribuição: {no.variavel} = ")

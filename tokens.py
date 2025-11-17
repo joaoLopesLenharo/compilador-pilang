@@ -1,9 +1,21 @@
 class TipoToken:
     """Representa os tipos de tokens sem depender de Enum."""
 
-    # Palavras Reservadas
+    # Palavras Reservadas - Estrutura Teatral
+    SCENE = "SCENE"
+    FIM_CENA = "FIM_CENA"
+    CHARACTER = "CHARACTER"
+    MEMORY = "MEMORY"
+    FIM_MEMORY = "FIM_MEMORY"
+    SPEECH = "SPEECH"
+    SAYS = "SAYS"
+    SPEAKS = "SPEAKS"
+    APPROACHES = "APPROACHES"
+    EXITS = "EXITS"
+    
+    # Tipos e Comandos
+    NUMBER = "NUMBER"  # Tipo numérico (inteiro ou real)
     LEIA = "LEIA"
-    ESCREVA = "ESCREVA"
 
     # Identificadores e Literais
     IDENTIFICADOR = "IDENTIFICADOR"
@@ -44,10 +56,32 @@ class Token:
     def __repr__(self):
         return self.__str__()
 
-# Tabela de palavras reservadas
+# Tabela de palavras reservadas - DRAMATICA
 PALAVRAS_RESERVADAS = {
+    # Estrutura teatral
+    'scene': TipoToken.SCENE,
+    'SCENE': TipoToken.SCENE,
+    'FIM_CENA': TipoToken.FIM_CENA,
+    'fim_cena': TipoToken.FIM_CENA,
+    'character': TipoToken.CHARACTER,
+    'CHARACTER': TipoToken.CHARACTER,
+    'memory': TipoToken.MEMORY,
+    'MEMORY': TipoToken.MEMORY,
+    'FIM_MEMORY': TipoToken.FIM_MEMORY,
+    'fim_memory': TipoToken.FIM_MEMORY,
+    'speech': TipoToken.SPEECH,
+    'SPEECH': TipoToken.SPEECH,
+    'says': TipoToken.SAYS,
+    'SAYS': TipoToken.SAYS,
+    'speaks': TipoToken.SPEAKS,
+    'SPEAKS': TipoToken.SPEAKS,
+    'approaches': TipoToken.APPROACHES,
+    'APPROACHES': TipoToken.APPROACHES,
+    'exits': TipoToken.EXITS,
+    'EXITS': TipoToken.EXITS,
+    # Tipos e comandos
+    'number': TipoToken.NUMBER,
+    'NUMBER': TipoToken.NUMBER,
     'LEIA': TipoToken.LEIA,
-    'ESCREVA': TipoToken.ESCREVA,
-    'leia': TipoToken.LEIA,
-    'escreva': TipoToken.ESCREVA
+    'leia': TipoToken.LEIA
 }

@@ -1,0 +1,17 @@
+// Exemplo simples em DRAMATICA
+// Cena teatral que calcula a soma de dois números
+
+scene Soma:
+    character Calculadora:
+        memory:
+            a: number;
+            b: number;
+            resultado: number;
+        FIM_MEMORY
+
+    LEIA a;
+    LEIA b;
+    resultado = a + b;
+    Calculadora says resultado;
+FIM_CENA
+
