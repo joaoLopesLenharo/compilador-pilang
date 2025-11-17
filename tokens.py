@@ -2,25 +2,28 @@ class TipoToken:
     """Representa os tipos de tokens sem depender de Enum."""
 
     # Palavras Reservadas - Estrutura Teatral
-    SCENE = "SCENE"
+    CENA = "CENA"
     FIM_CENA = "FIM_CENA"
-    CHARACTER = "CHARACTER"
-    MEMORY = "MEMORY"
-    FIM_MEMORY = "FIM_MEMORY"
-    SPEECH = "SPEECH"
-    SAYS = "SAYS"
-    SPEAKS = "SPEAKS"
-    APPROACHES = "APPROACHES"
-    EXITS = "EXITS"
+    PERSONAGEM = "PERSONAGEM"
+    MEMORIA = "MEMORIA"
+    FIM_MEMORIA = "FIM_MEMORIA"
+    FALA = "FALA"
+    DIZ = "DIZ"
+    FALA_PARA = "FALA_PARA"
+    APROXIMA = "APROXIMA"
+    SAI = "SAI"
     
     # Tipos e Comandos
-    NUMBER = "NUMBER"  # Tipo numérico (inteiro ou real)
+    VARCHAR = "VARCHAR"  # Tipo string/texto
+    INT = "INT"  # Tipo inteiro
+    FLOAT = "FLOAT"  # Tipo real
     LEIA = "LEIA"
 
     # Identificadores e Literais
     IDENTIFICADOR = "IDENTIFICADOR"
     NUM_INTEIRO = "NUM_INTEIRO"
     NUM_REAL = "NUM_REAL"
+    STRING = "STRING"  # String literal entre aspas duplas
 
     # Operadores
     OP_ADICAO = "OP_ADICAO"
@@ -35,6 +38,15 @@ class TipoToken:
     PONTO_VIRGULA = "PONTO_VIRGULA"
     PARENTESE_ESQ = "PARENTESE_ESQ"
     PARENTESE_DIR = "PARENTESE_DIR"
+    COLCHETE_ESQ = "COLCHETE_ESQ"  # [
+    COLCHETE_DIR = "COLCHETE_DIR"  # ]
+    CHAVE_ESQ = "CHAVE_ESQ"  # {
+    CHAVE_DIR = "CHAVE_DIR"  # }
+    VIRGULA = "VIRGULA"  # ,
+    PONTO = "PONTO"  # .
+    EXCLAMACAO = "EXCLAMACAO"  # !
+    MAIOR_QUE = "MAIOR_QUE"  # >
+    ASPAS_DUPLAS = "ASPAS_DUPLAS"  # "
 
     # Especial
     EOF = "EOF"
@@ -56,32 +68,23 @@ class Token:
     def __repr__(self):
         return self.__str__()
 
-# Tabela de palavras reservadas - DRAMATICA
+# Tabela de palavras reservadas - DRAMATICA (CASE-SENSITIVE - apenas MAIÚSCULAS)
 PALAVRAS_RESERVADAS = {
     # Estrutura teatral
-    'scene': TipoToken.SCENE,
-    'SCENE': TipoToken.SCENE,
+    'CENA': TipoToken.CENA,
     'FIM_CENA': TipoToken.FIM_CENA,
-    'fim_cena': TipoToken.FIM_CENA,
-    'character': TipoToken.CHARACTER,
-    'CHARACTER': TipoToken.CHARACTER,
-    'memory': TipoToken.MEMORY,
-    'MEMORY': TipoToken.MEMORY,
-    'FIM_MEMORY': TipoToken.FIM_MEMORY,
-    'fim_memory': TipoToken.FIM_MEMORY,
-    'speech': TipoToken.SPEECH,
-    'SPEECH': TipoToken.SPEECH,
-    'says': TipoToken.SAYS,
-    'SAYS': TipoToken.SAYS,
-    'speaks': TipoToken.SPEAKS,
-    'SPEAKS': TipoToken.SPEAKS,
-    'approaches': TipoToken.APPROACHES,
-    'APPROACHES': TipoToken.APPROACHES,
-    'exits': TipoToken.EXITS,
-    'EXITS': TipoToken.EXITS,
-    # Tipos e comandos
-    'number': TipoToken.NUMBER,
-    'NUMBER': TipoToken.NUMBER,
-    'LEIA': TipoToken.LEIA,
-    'leia': TipoToken.LEIA
+    'PERSONAGEM': TipoToken.PERSONAGEM,
+    'MEMORIA': TipoToken.MEMORIA,
+    'FIM_MEMORIA': TipoToken.FIM_MEMORIA,
+    'FALA': TipoToken.FALA,
+    'DIZ': TipoToken.DIZ,
+    'FALA_PARA': TipoToken.FALA_PARA,
+    'APROXIMA': TipoToken.APROXIMA,
+    'SAI': TipoToken.SAI,
+    # Tipos de banco de dados
+    'VARCHAR': TipoToken.VARCHAR,
+    'INT': TipoToken.INT,
+    'FLOAT': TipoToken.FLOAT,
+    # Comandos
+    'LEIA': TipoToken.LEIA
 }

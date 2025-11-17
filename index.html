@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Compilador PiLang Online</title>
+    <title>Compilador DRAMATICA Online</title>
     <style>
         body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background-color: #f4f4f9; margin: 0; padding: 20px; }
         h1 { color: #333; }
@@ -10,32 +10,69 @@
         .editor-area, .output-area { flex: 1; display: flex; flex-direction: column; }
         textarea { width: 100%; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; font-family: monospace; font-size: 16px; padding: 10px; }
         #codigo { height: 500px; }
-        #entradas { height: 100px; }
-        #output { height: 620px; background-color: #2d2d2d; color: #f1f1f1; white-space: pre-wrap; padding: 10px; border-radius: 5px; }
+        #output { height: 620px; background-color: #2d2d2d; color: #f1f1f1; white-space: pre-wrap; padding: 10px; border-radius: 5px; overflow-y: auto; }
+        #output.aguardando-entrada { border: 2px solid #4CAF50; }
+        #input-line { display: flex; align-items: center; margin-top: 10px; }
+        #input-line input { flex: 1; background-color: #2d2d2d; color: #f1f1f1; border: 1px solid #4CAF50; padding: 5px; font-family: monospace; }
+        #input-line span { color: #4CAF50; margin-right: 5px; }
         #feedback { padding: 10px; margin-top: -5px; border-radius: 0 0 5px 5px; text-align: center; font-weight: bold; transition: all 0.3s; }
         .feedback-sucesso { background-color: #d4edda; color: #155724; }
         .feedback-erro { background-color: #f8d7da; color: #721c24; }
         button { background-color: #4CAF50; color: white; padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 10px; align-self: flex-start; }
         button:hover { background-color: #45a049; }
+        button.secondary { background-color: #2196F3; }
+        button.secondary:hover { background-color: #1976D2; }
+        button.help { background-color: #FF9800; }
+        button.help:hover { background-color: #F57C00; }
         label { margin-top: 15px; font-weight: bold; color: #555; }
+        .button-group { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+        select { padding: 8px 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
+        .help-section { background-color: #fff; border: 1px solid #ddd; border-radius: 5px; padding: 20px; margin-top: 20px; max-width: 1200px; width: 90%; display: none; }
+        .help-section.visible { display: block; }
+        .help-section h2 { color: #333; margin-top: 0; }
+        .help-section h3 { color: #555; margin-top: 20px; }
+        .help-section h4 { color: #2196F3; margin-top: 15px; margin-bottom: 10px; font-size: 1.1em; }
+        .help-section code { background-color: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-family: monospace; color: #d63384; }
+        .help-section pre { background-color: #f4f4f4; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        .help-section ul { line-height: 1.8; }
+        .help-section p { margin: 8px 0; line-height: 1.6; }
+        .help-section .palavra-reservada { background-color: #f8f9fa; border-left: 4px solid #2196F3; padding: 15px; margin-bottom: 15px; border-radius: 4px; }
     </style>
 </head>
 <body>
-    <h1>Compilador PiLang Online</h1>
+    <h1>Compilador DRAMATICA Online</h1>
     <div class="container">
         <div class="editor-area">
             <label for="codigo">Código Fonte:</label>
-            <textarea id="codigo" placeholder="Escreva seu código PiLang aqui..."></textarea>
+            <div class="button-group">
+                <select id="exemplos-select" onchange="carregarExemplo()">
+                    <option value="">-- Carregar Exemplo --</option>
+                    <option value="exemplos/exemplo_simples.dramatica">Exemplo Simples (Soma)</option>
+                    <option value="exemplos/exemplo_matematico.dramatica">Exemplo Matemático</option>
+                    <option value="exemplos/exemplo_subtracao.dramatica">Exemplo Subtração</option>
+                    <option value="exemplos/exemplo_sem_variaveis.dramatica">Exemplo Sem Variáveis</option>
+                    <option value="exemplos/exemplo_validacao_tipos.dramatica">Validação de Tipos</option>
+                    <option value="exemplos/exemplo_varchar_aceita_numero.dramatica">VARCHAR Aceita Número</option>
+                    <option value="exemplos/exemplo_erro_tipo_int.dramatica">Erro: INT com Letras</option>
+                    <option value="exemplos/exemplo_erro_tipo_float.dramatica">Erro: FLOAT com Letras</option>
+                </select>
+                <button class="secondary" onclick="limparCodigo()">Limpar</button>
+                <button class="help" onclick="toggleAjuda()">Como Programar</button>
+            </div>
+            <textarea id="codigo" placeholder="Escreva seu código DRAMATICA aqui..."></textarea>
             <div id="feedback">Digite seu código para começar.</div>
-
-            <label for="entradas">Entradas para o comando LEIA (um valor por linha):</label>
-            <textarea id="entradas" placeholder="10&#10;20"></textarea>
 
             <button onclick="executarCodigo()">Executar</button>
         </div>
         <div class="output-area">
-            <label for="output">Saída do Programa:</label>
-            <pre id="output"></pre>
+            <label for="output">Terminal de Saída:</label>
+            <div id="output-container">
+                <pre id="output"></pre>
+                <div id="input-line" style="display: none;">
+                    <span>&gt;</span>
+                    <input type="text" id="input-terminal" placeholder="Digite aqui e pressione Enter...">
+                </div>
+            </div>
         </div>
     </div>
 
@@ -43,8 +80,11 @@
         const editorCodigo = document.getElementById('codigo');
         const feedbackDiv = document.getElementById('feedback');
         const outputDiv = document.getElementById('output');
-        const entradasText = document.getElementById('entradas');
+        const inputLine = document.getElementById('input-line');
+        const inputTerminal = document.getElementById('input-terminal');
         let debounceTimer;
+        let sessionId = null;
+        let codigoAtual = '';
 
         // Análise em tempo real
         editorCodigo.addEventListener('input', () => {
@@ -72,22 +112,317 @@
 
         // Execução do código
         async function executarCodigo() {
-            const codigo = editorCodigo.value;
-            const entradas = entradasText.value.trim().split('\n').filter(line => line);
-            outputDiv.textContent = 'Executando...';
+            codigoAtual = editorCodigo.value;
+            outputDiv.textContent = 'Executando...\n';
+            outputDiv.classList.remove('aguardando-entrada');
+            inputLine.style.display = 'none';
+            sessionId = null;
 
             try {
                 const response = await fetch('http://127.0.0.1:5000/executar', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ codigo, entradas })
+                    body: JSON.stringify({ codigo: codigoAtual })
                 });
                 const result = await response.json();
-                outputDiv.textContent = result.output;
+                
+                if (result.status === 'aguardando_entrada') {
+                    // Precisa de entrada do usuário
+                    sessionId = result.session_id;
+                    const variavel = result.variavel || 'valor';
+                    outputDiv.textContent = result.output;
+                    outputDiv.classList.add('aguardando-entrada');
+                    inputLine.style.display = 'flex';
+                    inputTerminal.placeholder = `Digite o valor para ${variavel} e pressione Enter...`;
+                    inputTerminal.focus();
+                    inputTerminal.value = '';
+                } else {
+                    // Execução completa ou erro
+                    outputDiv.textContent = result.output;
+                    outputDiv.classList.remove('aguardando-entrada');
+                    inputLine.style.display = 'none';
+                }
             } catch (error) {
                 outputDiv.textContent = 'Erro de conexão com o servidor de execução.';
+                outputDiv.classList.remove('aguardando-entrada');
+                inputLine.style.display = 'none';
             }
         }
+
+        // Enviar entrada quando o usuário pressionar Enter
+        inputTerminal.addEventListener('keypress', async function(e) {
+            if (e.key === 'Enter' && sessionId) {
+                const entrada = inputTerminal.value.trim();
+                outputDiv.textContent += `> ${entrada}\n`;
+                inputTerminal.value = '';
+                inputLine.style.display = 'none';
+                outputDiv.classList.remove('aguardando-entrada');
+
+                try {
+                    const response = await fetch('http://127.0.0.1:5000/continuar_execucao', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ session_id: sessionId, entrada: entrada })
+                    });
+                    const result = await response.json();
+                    
+                    if (result.status === 'aguardando_entrada') {
+                        // Ainda precisa de mais entrada
+                        sessionId = result.session_id;
+                        const variavel = result.variavel || 'valor';
+                        outputDiv.textContent += result.output;
+                        outputDiv.classList.add('aguardando-entrada');
+                        inputLine.style.display = 'flex';
+                        inputTerminal.placeholder = `Digite o valor para ${variavel} e pressione Enter...`;
+                        inputTerminal.focus();
+                    } else {
+                        // Execução completa
+                        outputDiv.textContent += result.output;
+                        sessionId = null;
+                    }
+                } catch (error) {
+                    outputDiv.textContent += '\nErro ao enviar entrada.';
+                    sessionId = null;
+                }
+            }
+        });
+
+        // Carregar exemplo
+        async function carregarExemplo() {
+            const select = document.getElementById('exemplos-select');
+            const arquivo = select.value;
+            if (!arquivo) return;
+
+            try {
+                const response = await fetch(`http://127.0.0.1:5000/arquivo/${arquivo}`);
+                if (response.ok) {
+                    const codigo = await response.text();
+                    editorCodigo.value = codigo;
+                    editorCodigo.dispatchEvent(new Event('input'));
+                    feedbackDiv.textContent = `Arquivo ${arquivo} carregado com sucesso!`;
+                    feedbackDiv.className = 'feedback-sucesso';
+                } else {
+                    feedbackDiv.textContent = `Erro ao carregar arquivo: ${arquivo}`;
+                    feedbackDiv.className = 'feedback-erro';
+                }
+            } catch (error) {
+                feedbackDiv.textContent = 'Erro ao carregar arquivo.';
+                feedbackDiv.className = 'feedback-erro';
+            }
+        }
+
+        // Limpar código
+        function limparCodigo() {
+            editorCodigo.value = '';
+            outputDiv.textContent = '';
+            feedbackDiv.textContent = 'Digite seu código para começar.';
+            feedbackDiv.className = '';
+            sessionId = null;
+        }
+
+        // Toggle ajuda
+        function toggleAjuda() {
+            const helpSection = document.getElementById('help-section');
+            helpSection.classList.toggle('visible');
+        }
     </script>
+
+    <!-- Seção de Ajuda -->
+    <div id="help-section" class="help-section">
+        <h2>📚 Como Programar em DRAMATICA</h2>
+        
+        <h3>Estrutura Básica de um Programa</h3>
+        <p>Todo programa DRAMATICA representa uma <strong>cena teatral</strong> com um personagem:</p>
+        <pre><code>CENA NomeDaCena:
+    PERSONAGEM NomeDoPersonagem:
+        MEMORIA:
+            variavel1: INT;
+            variavel2: INT;
+        FIM_MEMORIA
+
+    LEIA variavel1;
+    variavel2 = variavel1 + 10;
+    NomeDoPersonagem DIZ variavel2;
+FIM_CENA</code></pre>
+
+        <h3>Palavras Reservadas</h3>
+        <p style="margin-bottom: 20px;">Abaixo estão todas as palavras reservadas da linguagem DRAMATICA com explicações detalhadas:</p>
+        
+        <div class="palavra-reservada">
+            <h4><code>CENA</code></h4>
+            <p><strong>O que é:</strong> Palavra-chave que marca o início de um programa DRAMATICA. É o ponto de entrada obrigatório de todo programa. Deve ser escrita em MAIÚSCULAS.</p>
+            <p><strong>O que faz:</strong> Define o nome da cena teatral e inicia o bloco principal do programa. Todo código executável deve estar dentro de uma cena.</p>
+            <p><strong>Para que serve:</strong> Funciona como o "main" da linguagem. É obrigatória e deve ser a primeira palavra-chave do programa. Delimita o escopo principal onde personagens e comandos são definidos.</p>
+            <p><strong>Exemplo:</strong> <code>CENA Calculadora:</code> - inicia uma cena chamada "Calculadora"</p>
+        </div>
+
+        <div class="palavra-reservada">
+            <h4><code>FIM_CENA</code></h4>
+            <p><strong>O que é:</strong> Palavra-chave que marca o fim de um programa DRAMATICA. É obrigatória e deve ser a última linha do código.</p>
+            <p><strong>O que faz:</strong> Encerra o bloco principal do programa iniciado por <code>CENA</code>, indicando que não há mais comandos a serem processados.</p>
+            <p><strong>Para que serve:</strong> Marca o término da cena teatral e fecha o escopo do programa. Sem ela, o compilador não sabe onde o programa termina e reporta erro sintático.</p>
+            <p><strong>Exemplo:</strong> <code>FIM_CENA</code> - deve aparecer no final de todo programa</p>
+        </div>
+
+        <div class="palavra-reservada">
+            <h4><code>PERSONAGEM</code></h4>
+            <p><strong>O que é:</strong> Palavra-chave que declara um personagem/ator na cena teatral. Cada programa deve ter pelo menos um personagem. Deve ser escrita em MAIÚSCULAS.</p>
+            <p><strong>O que faz:</strong> Cria uma entidade que possui sua própria memória (variáveis) e pode executar ações (comandos como <code>DIZ</code> e <code>LEIA</code>).</p>
+            <p><strong>Para que serve:</strong> Define a entidade principal do programa que terá variáveis e executará comandos. O personagem é quem "fala" (com <code>DIZ</code>) e interage com o usuário. É através do personagem que o programa executa suas ações.</p>
+            <p><strong>Exemplo:</strong> <code>PERSONAGEM Calculadora:</code> - cria um personagem chamado "Calculadora"</p>
+        </div>
+
+        <div class="palavra-reservada">
+            <h4><code>MEMORIA:</code></h4>
+            <p><strong>O que é:</strong> Palavra-chave que inicia o bloco de declaração de variáveis do personagem. É opcional, mas altamente recomendada. Deve ser escrita em MAIÚSCULAS seguida de dois pontos.</p>
+            <p><strong>O que faz:</strong> Abre uma seção especial onde você declara todas as variáveis que o personagem utilizará durante a execução do programa. Todas as variáveis devem ser declaradas aqui antes de serem usadas.</p>
+            <p><strong>Para que serve:</strong> Permite organizar e definir variáveis de forma estruturada. Todas as variáveis que serão lidas (com <code>LEIA</code>), escritas (com <code>DIZ</code>) ou usadas em cálculos devem ser declaradas neste bloco. Facilita a leitura e manutenção do código.</p>
+            <p><strong>Exemplo:</strong> 
+            <pre><code>MEMORIA:
+    x: INT;
+    y: FLOAT;
+    nome: VARCHAR;
+FIM_MEMORIA</code></pre>
+            </p>
+        </div>
+
+        <div class="palavra-reservada">
+            <h4><code>FIM_MEMORIA</code></h4>
+            <p><strong>O que é:</strong> Palavra-chave que marca o fim do bloco de declaração de variáveis iniciado por <code>MEMORIA:</code>.</p>
+            <p><strong>O que faz:</strong> Encerra a seção de declaração de variáveis, indicando que todas as variáveis do personagem foram declaradas.</p>
+            <p><strong>Para que serve:</strong> Delimita o fim do bloco de memória e marca o início da seção de comandos do programa. Deve aparecer após todas as declarações de variáveis e antes dos comandos de execução.</p>
+            <p><strong>Exemplo:</strong> <code>FIM_MEMORIA</code> - fecha o bloco iniciado por <code>MEMORIA:</code></p>
+        </div>
+
+        <div class="palavra-reservada">
+            <h4><code>VARCHAR</code></h4>
+            <p><strong>O que é:</strong> Tipo de dado para strings/texto. Segue o padrão de banco de dados. Deve ser escrito em MAIÚSCULAS.</p>
+            <p><strong>O que faz:</strong> Define que uma variável pode armazenar texto (strings). Aceita qualquer valor, incluindo números que serão tratados como texto.</p>
+            <p><strong>Para que serve:</strong> É usado na declaração de variáveis que precisam armazenar texto. Quando você usa <code>LEIA</code> em uma variável VARCHAR, qualquer valor digitado será aceito como texto.</p>
+            <p><strong>Exemplo:</strong> <code>nome: VARCHAR;</code> - declara que <code>nome</code> pode armazenar texto</p>
+        </div>
+
+        <div class="palavra-reservada">
+            <h4><code>INT</code></h4>
+            <p><strong>O que é:</strong> Tipo de dado para números inteiros. Segue o padrão de banco de dados. Deve ser escrito em MAIÚSCULAS.</p>
+            <p><strong>O que faz:</strong> Define que uma variável pode armazenar apenas números inteiros (como <code>42</code>, <code>100</code>, <code>-5</code>).</p>
+            <p><strong>Para que serve:</strong> É usado na declaração de variáveis que precisam armazenar números inteiros. Quando você usa <code>LEIA</code> em uma variável INT, apenas números inteiros são aceitos - letras ou números decimais causarão erro.</p>
+            <p><strong>Exemplo:</strong> <code>idade: INT;</code> - declara que <code>idade</code> pode armazenar apenas números inteiros</p>
+        </div>
+
+        <div class="palavra-reservada">
+            <h4><code>FLOAT</code></h4>
+            <p><strong>O que é:</strong> Tipo de dado para números reais (com ponto decimal). Segue o padrão de banco de dados. Deve ser escrito em MAIÚSCULAS.</p>
+            <p><strong>O que faz:</strong> Define que uma variável pode armazenar números reais (como <code>3.14</code>, <code>2.5</code>, <code>-0.5</code>) ou números inteiros (que serão convertidos para float).</p>
+            <p><strong>Para que serve:</strong> É usado na declaração de variáveis que precisam armazenar números decimais. Quando você usa <code>LEIA</code> em uma variável FLOAT, apenas números são aceitos - letras causarão erro.</p>
+            <p><strong>Exemplo:</strong> <code>preco: FLOAT;</code> - declara que <code>preco</code> pode armazenar números reais</p>
+        </div>
+
+        <div class="palavra-reservada">
+            <h4><code>LEIA</code></h4>
+            <p><strong>O que é:</strong> Comando de entrada que solicita um valor do usuário durante a execução do programa. É um comando interativo.</p>
+            <p><strong>O que faz:</strong> Pausa a execução do programa e aguarda que o usuário digite um valor diretamente no terminal de saída. O valor digitado é validado conforme o tipo da variável e armazenado.</p>
+            <p><strong>Para que serve:</strong> Permite criar programas interativos onde o usuário fornece dados de entrada. A validação de tipos é rigorosa: variáveis <code>INT</code> e <code>FLOAT</code> rejeitam letras (causam erro), enquanto <code>VARCHAR</code> aceita qualquer valor. O programa aguarda a entrada antes de continuar a execução.</p>
+            <p><strong>Exemplo:</strong> <code>LEIA idade;</code> - pausa o programa, aguarda o usuário digitar um valor no terminal, e armazena em <code>idade</code></p>
+        </div>
+
+        <div class="palavra-reservada">
+            <h4><code>DIZ</code></h4>
+            <p><strong>O que é:</strong> Comando de saída que exibe um valor no terminal. É a forma do personagem "falar" ou mostrar informações. Deve ser escrito em MAIÚSCULAS.</p>
+            <p><strong>O que faz:</strong> Avalia uma expressão (que pode ser uma variável, um número literal, ou um cálculo matemático) e imprime o resultado no terminal de saída, precedido pelo nome do personagem seguido de "diz:".</p>
+            <p><strong>Para que serve:</strong> Permite mostrar resultados e informações ao usuário. É usado para exibir valores de variáveis, resultados de cálculos ou qualquer expressão matemática. É a única forma de produzir saída visível no programa. Sem ele, o programa executaria mas não mostraria nada.</p>
+            <p><strong>Exemplo:</strong> <code>Calculadora DIZ resultado;</code> - avalia a variável <code>resultado</code> e mostra "Calculadora diz: [valor]" no terminal</p>
+        </div>
+
+        <h3>Declaração de Variáveis</h3>
+        <p>As variáveis devem ser declaradas dentro do bloco <code>MEMORIA:</code> usando tipos de banco de dados:</p>
+        <pre><code>MEMORIA:
+    nome: VARCHAR;
+    idade: INT;
+    altura: FLOAT;
+    resultado: INT;
+FIM_MEMORIA</code></pre>
+        <p><strong>Tipos disponíveis:</strong></p>
+        <ul>
+            <li><code>VARCHAR</code> - Aceita qualquer valor (texto ou números como string)</li>
+            <li><code>INT</code> - Aceita apenas números inteiros (erro se receber letras ou decimais)</li>
+            <li><code>FLOAT</code> - Aceita números (inteiros ou decimais, erro se receber letras)</li>
+        </ul>
+
+        <h3>Comandos</h3>
+        <ul>
+            <li><strong>Leitura:</strong> <code>LEIA nomeVariavel;</code></li>
+            <li><strong>Escrita:</strong> <code>NomePersonagem DIZ expressao;</code></li>
+            <li><strong>Atribuição:</strong> <code>variavel = expressao;</code></li>
+        </ul>
+
+        <h3>Operadores Aritméticos</h3>
+        <ul>
+            <li><code>+</code> - Adição</li>
+            <li><code>-</code> - Subtração</li>
+            <li><code>*</code> - Multiplicação</li>
+            <li><code>/</code> - Divisão</li>
+            <li><code>^</code> - Potenciação</li>
+            <li><code>=</code> - Atribuição</li>
+        </ul>
+
+        <h3>Expressões</h3>
+        <p>Você pode usar expressões matemáticas com um ou dois operandos:</p>
+        <pre><code>// Atribuição simples
+x = 10;
+
+// Atribuição com expressão
+resultado = a + b;
+diferenca = num1 - num2;
+produto = x * y;
+quociente = a / b;
+potencia = base ^ expoente;
+
+// Expressões complexas (respeitam precedência)
+z = x + y * 2;        // y * 2 primeiro, depois soma
+w = (a + b) * c;      // parênteses alteram precedência
+
+// Exemplo com tipos diferentes
+MEMORIA:
+    nome: VARCHAR;
+    idade: INT;
+    altura: FLOAT;
+FIM_MEMORIA</code></pre>
+
+        <h3>Exemplo Completo</h3>
+        <pre><code>CENA Calculadora:
+    PERSONAGEM Calculadora:
+        MEMORIA:
+            a: INT;
+            b: INT;
+            soma: INT;
+        FIM_MEMORIA
+
+    LEIA a;
+    LEIA b;
+    soma = a + b;
+    Calculadora DIZ soma;
+FIM_CENA</code></pre>
+
+        <h3>Regras Importantes</h3>
+        <ul>
+            <li>Todo comando deve terminar com <code>;</code> (ponto e vírgula)</li>
+            <li>Use <code>//</code> para comentários de linha</li>
+            <li>O compilador é <strong>case-sensitive</strong> - todas as palavras reservadas devem ser em MAIÚSCULAS</li>
+            <li>Tipos seguem padrão de banco de dados: <code>VARCHAR</code>, <code>INT</code>, <code>FLOAT</code></li>
+            <li><code>VARCHAR</code> aceita qualquer valor (incluindo números como texto)</li>
+            <li><code>INT</code> e <code>FLOAT</code> dão erro se receberem letras no <code>LEIA</code></li>
+            <li>O bloco <code>MEMORIA:</code> é opcional, mas recomendado</li>
+            <li>Quando usar <code>LEIA</code>, digite o valor diretamente no terminal quando solicitado</li>
+        </ul>
+
+        <h3>Dicas</h3>
+        <ul>
+            <li>Use nomes descritivos para variáveis e personagens</li>
+            <li>A análise sintática acontece em tempo real enquanto você digita</li>
+            <li>Erros são mostrados com linha e coluna exatas</li>
+            <li>Carregue exemplos prontos usando o menu "Carregar Exemplo"</li>
+        </ul>
+    </div>
 </body>
 </html>

@@ -21,41 +21,42 @@
 
 A linguagem **DRAMATICA** foi criada com inspiração em dramaturgia e teatro. Cada programa representa uma **cena teatral**, onde:
 
-- **`scene`** marca o início do programa (substitui palavras-chave tradicionais como `INICIO`)
+- **`CENA`** marca o início do programa (case-sensitive, deve ser MAIÚSCULAS)
 - **`FIM_CENA`** marca o fim do programa
-- **`character`** declara um personagem/ator
-- **`memory:`** é o cabeçalho para declaração de variáveis
-- **`FIM_MEMORY`** marca o fim das declarações
-- **`says`** é o comando de escrita (inspirado em falas teatrais)
+- **`PERSONAGEM`** declara um personagem/ator (case-sensitive, deve ser MAIÚSCULAS)
+- **`MEMORIA:`** é o cabeçalho para declaração de variáveis (case-sensitive, deve ser MAIÚSCULAS)
+- **`FIM_MEMORIA`** marca o fim das declarações
+- **`DIZ`** é o comando de escrita (case-sensitive, deve ser MAIÚSCULAS)
 - **`LEIA`** é o comando de leitura
 
 ### 1.2 Estrutura da Linguagem
 
 #### Palavras-chave para início e fim do programa
 
-- **Início:** `scene NomeCena:`
+- **Início:** `CENA NomeCena:` (case-sensitive)
 - **Fim:** `FIM_CENA`
 
 #### Cabeçalho para declaração de variáveis
 
 ```
-character NomePersonagem:
-    memory:
-        variavel1: number;
-        variavel2: number;
-    FIM_MEMORY
+PERSONAGEM NomePersonagem:
+    MEMORIA:
+        variavel1: INT;
+        variavel2: FLOAT;
+        nome: VARCHAR;
+    FIM_MEMORIA
 ```
 
-#### Tipos numéricos
+#### Tipos de dados (Padrão Banco de Dados)
 
-- **`number`:** Tipo numérico único que suporta tanto inteiros quanto reais
-  - Inteiros: `42`, `100`, `0`
-  - Reais: `3.14`, `2.5`, `0.0`
+- **`VARCHAR`:** Tipo string/texto - aceita qualquer valor (incluindo números como string)
+- **`INT`:** Tipo inteiro - aceita apenas números inteiros, rejeita letras
+- **`FLOAT`:** Tipo real - aceita números (inteiros ou decimais), rejeita letras
 
 #### Comandos de escrita e leitura
 
-- **Leitura:** `LEIA variavel;`
-- **Escrita:** `Personagem says expressao;`
+- **Leitura:** `LEIA variavel;` (com validação de tipos)
+- **Escrita:** `Personagem DIZ expressao;` (case-sensitive)
 
 #### Operações aritméticas
 
@@ -77,18 +78,18 @@ character NomePersonagem:
 ### 1.3 Exemplo Completo
 
 ```dramatica
-scene Soma:
-    character Calculadora:
-        memory:
-            a: number;
-            b: number;
-            resultado: number;
-        FIM_MEMORY
+CENA Soma:
+    PERSONAGEM Calculadora:
+        MEMORIA:
+            a: INT;
+            b: INT;
+            resultado: INT;
+        FIM_MEMORIA
 
     LEIA a;
     LEIA b;
     resultado = a + b;
-    Calculadora says resultado;
+    Calculadora DIZ resultado;
 FIM_CENA
 ```
 
@@ -289,7 +290,7 @@ Após o reconhecimento por um AFD, cada token é classificado em uma das seguint
 
 | Categoria | Exemplos |
 |-----------|----------|
-| Palavras Reservadas | `scene`, `character`, `memory`, `FIM_CENA`, `LEIA`, `says`, `number` |
+| Palavras Reservadas | `CENA`, `PERSONAGEM`, `MEMORIA`, `FIM_CENA`, `FIM_MEMORIA`, `LEIA`, `DIZ`, `VARCHAR`, `INT`, `FLOAT` |
 | Identificadores | `Calculadora`, `a`, `resultado`, `variavel1` |
 | Números Inteiros | `42`, `100`, `0` |
 | Números Reais | `3.14`, `2.5`, `0.0` |
@@ -505,17 +506,17 @@ O arquivo `test_lexer.py` contém testes que verificam:
 A gramática da linguagem DRAMATICA foi definida em EBNF (Extended Backus-Naur Form):
 
 ```ebnf
-<programa> ::= "scene" IDENTIFICADOR ":" <personagem> <comandos> "FIM_CENA"
+<programa> ::= "CENA" IDENTIFICADOR ":" <personagem> <comandos> "FIM_CENA"
 
-<personagem> ::= "character" IDENTIFICADOR ":" <declaracao_variaveis>
+<personagem> ::= "PERSONAGEM" IDENTIFICADOR ":" <declaracao_variaveis>
 
-<declaracao_variaveis> ::= "memory" ":" <lista_declaracoes> "FIM_MEMORY"
+<declaracao_variaveis> ::= "MEMORIA" ":" <lista_declaracoes> "FIM_MEMORIA"
                          | ε
 
 <lista_declaracoes> ::= <declaracao> <lista_declaracoes>
                       | <declaracao>
 
-<declaracao> ::= IDENTIFICADOR ":" "number" ";"
+<declaracao> ::= IDENTIFICADOR ":" ("VARCHAR" | "INT" | "FLOAT") ";"
 
 <comandos> ::= <comando> <comandos>
              | <comando>

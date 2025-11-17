@@ -19,7 +19,7 @@ class Personagem:
 class Declaracao:
     def __init__(self, nome: str, tipo: str):
         self.nome = nome
-        self.tipo = tipo  # 'NUMBER'
+        self.tipo = tipo  # 'VARCHAR', 'INT' ou 'FLOAT'
 
 
 class Comando:
@@ -65,7 +65,7 @@ class Fator:
 class Elemento:
     def __init__(self, valor: Union[str, int, float, 'Expressao'], tipo: str):
         self.valor = valor
-        self.tipo = tipo  # 'IDENTIFICADOR', 'NUM_INTEIRO', 'NUM_REAL', 'EXPRESSAO'
+        self.tipo = tipo  # 'IDENTIFICADOR', 'NUM_INTEIRO', 'NUM_REAL', 'STRING', 'EXPRESSAO'
 
 class ErroSintatico(Exception):
     def __init__(self, mensagem: str, linha: int, coluna: int):
@@ -117,12 +117,12 @@ class Parser:
             )
     
     def parser_programa(self) -> Programa:
-        """<programa> ::= scene IDENTIFICADOR : <personagem> <comandos> FIM_CENA"""
-        # Consome scene
-        self.consumir(TipoToken.SCENE, "Esperado 'scene' no início do programa")
+        """<programa> ::= CENA IDENTIFICADOR : <personagem> <comandos> FIM_CENA"""
+        # Consome cena
+        self.consumir(TipoToken.CENA, "Esperado 'CENA' no início do programa")
         
         # Nome da cena
-        nome_cena_token = self.consumir(TipoToken.IDENTIFICADOR, "Esperado nome da cena após 'scene'")
+        nome_cena_token = self.consumir(TipoToken.IDENTIFICADOR, "Esperado nome da cena após 'CENA'")
         nome_cena = nome_cena_token.lexema
         
         # Dois pontos
@@ -140,9 +140,9 @@ class Parser:
         return Programa(nome_cena, personagem, comandos)
     
     def parser_personagem(self) -> Personagem:
-        """<personagem> ::= character IDENTIFICADOR : <declaracao_variaveis>"""
-        # Consome character
-        self.consumir(TipoToken.CHARACTER, "Esperado 'character'")
+        """<personagem> ::= PERSONAGEM IDENTIFICADOR : <declaracao_variaveis>"""
+        # Consome personagem
+        self.consumir(TipoToken.PERSONAGEM, "Esperado 'PERSONAGEM'")
         
         # Nome do personagem
         nome_token = self.consumir(TipoToken.IDENTIFICADOR, "Esperado nome do personagem")
@@ -157,24 +157,24 @@ class Parser:
         return Personagem(nome, declaracoes)
     
     def parser_declaracao_variaveis(self) -> List[Declaracao]:
-        """<declaracao_variaveis> ::= memory : <lista_declaracoes> FIM_MEMORY | ε"""
+        """<declaracao_variaveis> ::= MEMORIA : <lista_declaracoes> FIM_MEMORIA | ε"""
         declaracoes = []
         
-        # Se não houver memory, retorna lista vazia (declarações são opcionais)
-        if not self.verificar(TipoToken.MEMORY):
+        # Se não houver memoria, retorna lista vazia (declarações são opcionais)
+        if not self.verificar(TipoToken.MEMORIA):
             return declaracoes
         
-        # Consome memory
-        self.consumir(TipoToken.MEMORY, "Esperado 'memory'")
+        # Consome memoria
+        self.consumir(TipoToken.MEMORIA, "Esperado 'MEMORIA'")
         
         # Dois pontos
-        self.consumir(TipoToken.DOIS_PONTOS, "Esperado ':' após 'memory'")
+        self.consumir(TipoToken.DOIS_PONTOS, "Esperado ':' após 'MEMORIA'")
         
         # Parse lista de declarações
         declaracoes = self.parser_lista_declaracoes()
         
-        # Consome FIM_MEMORY
-        self.consumir(TipoToken.FIM_MEMORY, "Esperado 'FIM_MEMORY' após declarações")
+        # Consome FIM_MEMORIA
+        self.consumir(TipoToken.FIM_MEMORIA, "Esperado 'FIM_MEMORIA' após declarações")
         
         return declaracoes
     
@@ -190,7 +190,7 @@ class Parser:
         return declaracoes
     
     def parser_declaracao(self) -> Declaracao:
-        """<declaracao> ::= IDENTIFICADOR : NUMBER ;"""
+        """<declaracao> ::= IDENTIFICADOR : (VARCHAR | INT | FLOAT) ;"""
         # Nome da variável
         nome_token = self.consumir(TipoToken.IDENTIFICADOR, "Esperado identificador na declaração")
         nome = nome_token.lexema
@@ -198,13 +198,28 @@ class Parser:
         # Dois pontos
         self.consumir(TipoToken.DOIS_PONTOS, "Esperado ':' após identificador")
         
-        # Tipo NUMBER
-        self.consumir(TipoToken.NUMBER, "Esperado tipo 'number'")
+        # Tipo (VARCHAR, INT ou FLOAT)
+        tipo = None
+        if self.verificar(TipoToken.VARCHAR):
+            self.avancar()
+            tipo = "VARCHAR"
+        elif self.verificar(TipoToken.INT):
+            self.avancar()
+            tipo = "INT"
+        elif self.verificar(TipoToken.FLOAT):
+            self.avancar()
+            tipo = "FLOAT"
+        else:
+            raise ErroSintatico(
+                "Esperado tipo (VARCHAR, INT ou FLOAT)",
+                self.token_atual.linha,
+                self.token_atual.coluna
+            )
         
         # Ponto e vírgula
         self.consumir(TipoToken.PONTO_VIRGULA, "Esperado ';' após declaração")
         
-        return Declaracao(nome, "NUMBER")
+        return Declaracao(nome, tipo)
     
     def parser_comandos(self) -> List[Comando]:
         """<comandos> ::= <comando> <comandos> | <comando>"""
@@ -214,7 +229,7 @@ class Parser:
         while (not self.verificar(TipoToken.EOF) and
                not self.verificar(TipoToken.FIM_CENA) and
                (self.verificar(TipoToken.LEIA) or 
-                self.verificar(TipoToken.SAYS) or 
+                self.verificar(TipoToken.DIZ) or 
                 self.verificar(TipoToken.IDENTIFICADOR))):
             
             comando = self.parser_comando()
@@ -227,14 +242,14 @@ class Parser:
         if self.verificar(TipoToken.LEIA):
             return self.parser_comando_leitura()
         elif self.verificar(TipoToken.IDENTIFICADOR):
-            # Precisa fazer lookahead para distinguir entre "Personagem says" e "variavel ="
-            if self.posicao + 1 < len(self.tokens) and self.tokens[self.posicao + 1].tipo == TipoToken.SAYS:
+            # Precisa fazer lookahead para distinguir entre "Personagem diz" e "variavel ="
+            if self.posicao + 1 < len(self.tokens) and self.tokens[self.posicao + 1].tipo == TipoToken.DIZ:
                 return self.parser_comando_escrita()
             else:
                 return self.parser_comando_atribuicao()
         else:
             raise ErroSintatico(
-                "Esperado comando (LEIA, says ou atribuição)",
+                "Esperado comando (LEIA, DIZ ou atribuição)",
                 self.token_atual.linha,
                 self.token_atual.coluna
             )
@@ -251,19 +266,19 @@ class Parser:
         return ComandoLeitura(variavel)
     
     def parser_comando_escrita(self) -> ComandoEscrita:
-        """<comando_escrita> ::= IDENTIFICADOR says <expressao> ;"""
+        """<comando_escrita> ::= IDENTIFICADOR DIZ <expressao> ;"""
         # Nome do personagem
         personagem_token = self.consumir(TipoToken.IDENTIFICADOR, "Esperado nome do personagem")
         personagem = personagem_token.lexema
         
-        # says
-        self.consumir(TipoToken.SAYS, "Esperado 'says' após nome do personagem")
+        # diz
+        self.consumir(TipoToken.DIZ, "Esperado 'DIZ' após nome do personagem")
         
         # Expressão (pode ser variável ou número)
         expressao = self.parser_expressao()
         
         # Ponto e vírgula
-        self.consumir(TipoToken.PONTO_VIRGULA, "Esperado ';' após comando says")
+        self.consumir(TipoToken.PONTO_VIRGULA, "Esperado ';' após comando DIZ")
         
         return ComandoEscrita(personagem, expressao)
     
@@ -336,7 +351,7 @@ class Parser:
         return Fator(elementos)
     
     def parser_elemento(self) -> Elemento:
-        """<elemento> ::= IDENTIFICADOR | NUM_INTEIRO | NUM_REAL | ( <expressao> )"""
+        """<elemento> ::= IDENTIFICADOR | NUM_INTEIRO | NUM_REAL | STRING | ( <expressao> )"""
         if self.verificar(TipoToken.IDENTIFICADOR):
             valor = self.token_atual.lexema
             self.avancar()
@@ -352,6 +367,11 @@ class Parser:
             self.avancar()
             return Elemento(valor, "NUM_REAL")
         
+        elif self.verificar(TipoToken.STRING):
+            valor = self.token_atual.lexema
+            self.avancar()
+            return Elemento(valor, "STRING")
+        
         elif self.verificar(TipoToken.PARENTESE_ESQ):
             self.avancar()
             expressao = self.parser_expressao()
@@ -360,7 +380,7 @@ class Parser:
         
         else:
             raise ErroSintatico(
-                "Esperado identificador, número ou expressão entre parênteses",
+                "Esperado identificador, número, string ou expressão entre parênteses",
                 self.token_atual.linha,
                 self.token_atual.coluna
             )
@@ -394,7 +414,7 @@ class Parser:
             print(f"{indentacao}Comando Leitura: LEIA {no.variavel}")
         
         elif isinstance(no, ComandoEscrita):
-            print(f"{indentacao}Comando Escrita: {no.personagem} says")
+            print(f"{indentacao}Comando Escrita: {no.personagem} diz")
             self.imprimir_ast(no.expressao, nivel + 1)
         
         elif isinstance(no, ComandoAtribuicao):

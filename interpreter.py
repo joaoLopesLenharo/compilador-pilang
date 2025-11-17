@@ -5,7 +5,8 @@ from parser import *
 
 class InterpretadorPiLang:
     def __init__(self):
-        self.variaveis: Dict[str, Union[int, float]] = {}
+        self.variaveis: Dict[str, Union[int, float, str]] = {}
+        self.tipos_variaveis: Dict[str, str] = {}  # Armazena o tipo de cada variável
         self.entrada_simulada = []
         self.indice_entrada = 0
     
@@ -21,8 +22,13 @@ class InterpretadorPiLang:
         
         # Processa declarações de variáveis do personagem (inicializa com valor padrão)
         for declaracao in programa.personagem.declaracoes:
-            if declaracao.tipo == "NUMBER":
+            self.tipos_variaveis[declaracao.nome] = declaracao.tipo  # Armazena o tipo
+            if declaracao.tipo == "VARCHAR":
+                self.variaveis[declaracao.nome] = ""
+            elif declaracao.tipo == "INT":
                 self.variaveis[declaracao.nome] = 0
+            elif declaracao.tipo == "FLOAT":
+                self.variaveis[declaracao.nome] = 0.0
             print(f"Declarada: {declaracao.nome}: {declaracao.tipo}")
         
         # Executa os comandos
@@ -42,9 +48,17 @@ class InterpretadorPiLang:
         elif isinstance(comando, ComandoAtribuicao):
             self.executar_atribuicao(comando)
     
-    def executar_leia(self, comando: ComandoLeitura): # A definição está aqui, com nome e indentação corretos
-        """Executa comando LEIA com conversão de tipo"""
+    def executar_leia(self, comando: ComandoLeitura):
+        """Executa comando LEIA com validação de tipos"""
         nome_variavel = comando.variavel
+        
+        # Verifica se a variável foi declarada
+        if nome_variavel not in self.tipos_variaveis:
+            # Variável não declarada - permite qualquer tipo (compatibilidade)
+            tipo_variavel = None
+        else:
+            tipo_variavel = self.tipos_variaveis[nome_variavel]
+        
         valor_entrada = None
         
         if self.indice_entrada < len(self.entrada_simulada):
@@ -52,27 +66,70 @@ class InterpretadorPiLang:
             self.indice_entrada += 1
             print(f"LEIA {nome_variavel} -> {valor_entrada}")
         else:
-            # Em ambiente web, não usa input() - usa valor padrão 0
-            valor_entrada = 0
-            print(f"LEIA {nome_variavel} -> {valor_entrada} (sem entrada, usando 0)")
-
-        try:
-            if '.' in str(valor_entrada):
-                valor_convertido = float(valor_entrada)
+            # Em ambiente web, não usa input() - usa valor padrão
+            if tipo_variavel == "VARCHAR":
+                valor_entrada = ""
+            elif tipo_variavel == "INT":
+                valor_entrada = 0
+            elif tipo_variavel == "FLOAT":
+                valor_entrada = 0.0
             else:
-                valor_convertido = int(valor_entrada)
-            self.variaveis[nome_variavel] = valor_convertido
-        except (ValueError, TypeError):
-            print(f"Aviso: entrada '{valor_entrada}' para '{nome_variavel}' não é um número válido. Tratando como 0.")
-            self.variaveis[nome_variavel] = 0
+                valor_entrada = ""
+            print(f"LEIA {nome_variavel} -> '{valor_entrada}' (sem entrada, usando valor padrão)")
+
+        # Valida e converte o valor conforme o tipo da variável
+        valor_final = self._validar_e_converter_valor(nome_variavel, valor_entrada, tipo_variavel)
+        self.variaveis[nome_variavel] = valor_final
+    
+    def _validar_e_converter_valor(self, nome_variavel: str, valor_entrada, tipo_variavel: str = None):
+        """Valida e converte valor de entrada conforme o tipo da variável"""
+        if isinstance(valor_entrada, str):
+            valor_entrada_limpo = valor_entrada.strip('"\'')
+        else:
+            valor_entrada_limpo = str(valor_entrada)
+        
+        # Se não há tipo definido, aceita qualquer coisa (compatibilidade)
+        if tipo_variavel is None:
+            # Tenta converter para número se possível
+            if valor_entrada_limpo and (valor_entrada_limpo.replace('.', '', 1).replace('-', '', 1).isdigit()):
+                try:
+                    return float(valor_entrada_limpo) if '.' in valor_entrada_limpo else int(valor_entrada_limpo)
+                except (ValueError, TypeError):
+                    return valor_entrada_limpo
+            return valor_entrada_limpo
+        
+        # Validação baseada no tipo
+        if tipo_variavel == "VARCHAR":
+            # VARCHAR aceita qualquer coisa (incluindo números como string)
+            return valor_entrada_limpo
+        
+        elif tipo_variavel == "INT":
+            # INT só aceita números inteiros
+            if not valor_entrada_limpo or not valor_entrada_limpo.replace('-', '', 1).isdigit():
+                raise ValueError(f"Erro de tipo: variável '{nome_variavel}' é do tipo INT, mas recebeu valor não numérico: '{valor_entrada_limpo}'")
+            try:
+                return int(valor_entrada_limpo)
+            except ValueError:
+                raise ValueError(f"Erro de tipo: variável '{nome_variavel}' é do tipo INT, mas recebeu valor inválido: '{valor_entrada_limpo}'")
+        
+        elif tipo_variavel == "FLOAT":
+            # FLOAT só aceita números (inteiros ou reais)
+            if not valor_entrada_limpo or not valor_entrada_limpo.replace('.', '', 1).replace('-', '', 1).isdigit():
+                raise ValueError(f"Erro de tipo: variável '{nome_variavel}' é do tipo FLOAT, mas recebeu valor não numérico: '{valor_entrada_limpo}'")
+            try:
+                return float(valor_entrada_limpo)
+            except ValueError:
+                raise ValueError(f"Erro de tipo: variável '{nome_variavel}' é do tipo FLOAT, mas recebeu valor inválido: '{valor_entrada_limpo}'")
+        
+        return valor_entrada_limpo
 
     def executar_escreva(self, comando: ComandoEscrita):
-        """Executa comando says (escrita teatral)"""
+        """Executa comando diz (escrita teatral)"""
         try:
             valor = self.avaliar_expressao(comando.expressao)
-            print(f"{comando.personagem} says: {valor}")
+            print(f"{comando.personagem} diz: {valor}")
         except Exception as e:
-            print(f"Erro ao executar says: {e}")
+            print(f"Erro ao executar diz: {e}")
     
     def executar_atribuicao(self, comando: ComandoAtribuicao):
         """Executa comando de atribuição"""
@@ -83,14 +140,14 @@ class InterpretadorPiLang:
         except Exception as e:
             print(f"Erro ao executar atribuição: {e}")
     
-    def avaliar_expressao(self, expressao: Expressao) -> Union[int, float]:
+    def avaliar_expressao(self, expressao: Expressao) -> Union[int, float, str]:
         """Avalia uma expressão e retorna seu valor"""
         if isinstance(expressao, ExpressaoSimples):
             return self.avaliar_expressao_simples(expressao)
         else:
             raise Exception(f"Tipo de expressão não suportado: {type(expressao)}")
     
-    def avaliar_expressao_simples(self, expressao: ExpressaoSimples) -> Union[int, float]:
+    def avaliar_expressao_simples(self, expressao: ExpressaoSimples) -> Union[int, float, str]:
         """Avalia uma expressão simples"""
         if not expressao.termos:
             return 0
@@ -104,15 +161,22 @@ class InterpretadorPiLang:
         for operador, termo in expressao.termos[1:]:
             valor_termo = self.avaliar_termo(termo)
             if operador == '+':
-                resultado += valor_termo
+                # Se ambos são strings, concatena; caso contrário, soma números
+                if isinstance(resultado, str) or isinstance(valor_termo, str):
+                    resultado = str(resultado) + str(valor_termo)
+                else:
+                    resultado += valor_termo
             elif operador == '-':
+                # Subtração só funciona com números
+                if isinstance(resultado, str) or isinstance(valor_termo, str):
+                    raise Exception("Operador '-' não pode ser usado com strings")
                 resultado -= valor_termo
             else:
                 raise Exception(f"Operador não suportado em expressão: {operador}")
         
         return resultado
     
-    def avaliar_termo(self, termo: Termo) -> Union[int, float]:
+    def avaliar_termo(self, termo: Termo) -> Union[int, float, str]:
         """Avalia um termo"""
         if not termo.fatores:
             return 0
@@ -136,7 +200,7 @@ class InterpretadorPiLang:
         
         return resultado
     
-    def avaliar_fator(self, fator: Fator) -> Union[int, float]:
+    def avaliar_fator(self, fator: Fator) -> Union[int, float, str]:
         """Avalia um fator - potência tem associatividade à direita"""
         if not fator.elementos:
             return 0
@@ -169,7 +233,7 @@ class InterpretadorPiLang:
         
         return resultado
     
-    def avaliar_elemento(self, elemento: Elemento) -> Union[int, float]:
+    def avaliar_elemento(self, elemento: Elemento) -> Union[int, float, str]:
         """Avalia um elemento"""
         if elemento.tipo == 'IDENTIFICADOR':
             if elemento.valor not in self.variaveis or self.variaveis[elemento.valor] is None:
@@ -179,6 +243,9 @@ class InterpretadorPiLang:
             return int(elemento.valor)
         elif elemento.tipo == 'NUM_REAL':
             return float(elemento.valor)
+        elif elemento.tipo == 'STRING':
+            # Remove as aspas da string
+            return elemento.valor.strip('"\'')
         elif elemento.tipo == 'EXPRESSAO':
             return self.avaliar_expressao(elemento.valor)
         else:

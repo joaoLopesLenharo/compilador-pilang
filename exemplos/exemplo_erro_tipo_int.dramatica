@@ -1,0 +1,25 @@
+// Exemplo que demonstra erro ao tentar ler letras em variável INT
+// Este programa vai gerar erro se você tentar ler "abc" na variável idade
+
+CENA ErroInt:
+    PERSONAGEM Validador:
+        MEMORIA:
+            idade: INT;
+        FIM_MEMORIA
+
+    // Se você digitar "abc" aqui, vai gerar erro:
+    // ERRO: variável 'idade' é do tipo INT, mas recebeu valor não numérico: 'abc'
+    LEIA idade;
+    
+    Validador DIZ idade;
+FIM_CENA
+
+// TESTES:
+// Entrada válida:
+//   idade: 25 -> OK
+//   idade: 100 -> OK
+//
+// Entrada inválida (gera erro):
+//   idade: "abc" -> ERRO: variável 'idade' é do tipo INT, mas recebeu valor não numérico: 'abc'
+//   idade: "25.5" -> ERRO (INT não aceita decimais, apenas inteiros)
+

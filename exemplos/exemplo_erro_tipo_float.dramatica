@@ -1,0 +1,26 @@
+// Exemplo que demonstra erro ao tentar ler letras em variável FLOAT
+// Este programa vai gerar erro se você tentar ler "xyz" na variável preco
+
+CENA ErroFloat:
+    PERSONAGEM Vendedor:
+        MEMORIA:
+            preco: FLOAT;
+        FIM_MEMORIA
+
+    // Se você digitar "xyz" aqui, vai gerar erro:
+    // ERRO: variável 'preco' é do tipo FLOAT, mas recebeu valor não numérico: 'xyz'
+    LEIA preco;
+    
+    Vendedor DIZ preco;
+FIM_CENA
+
+// TESTES:
+// Entrada válida:
+//   preco: 10.50 -> OK
+//   preco: 100 -> OK (inteiros são aceitos e convertidos para float)
+//   preco: 0.99 -> OK
+//
+// Entrada inválida (gera erro):
+//   preco: "xyz" -> ERRO: variável 'preco' é do tipo FLOAT, mas recebeu valor não numérico: 'xyz'
+//   preco: "abc123" -> ERRO (mesmo com números, se tiver letras, é rejeitado)
+

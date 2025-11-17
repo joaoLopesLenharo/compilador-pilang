@@ -85,16 +85,16 @@ python test_parser.py     # Testa análise sintática
 Cada programa em DRAMATICA representa uma **cena teatral**:
 
 ```
-scene NomeCena:
-    character NomePersonagem:
-        memory:
-            variavel1: number;
-            variavel2: number;
-        FIM_MEMORY
+CENA NomeCena:
+    PERSONAGEM NomePersonagem:
+        MEMORIA:
+            variavel1: INT;
+            variavel2: INT;
+        FIM_MEMORIA
 
     LEIA variavel1;
     variavel2 = variavel1 + 5;
-    Personagem says variavel2;
+    Personagem DIZ variavel2;
 FIM_CENA
 ```
 
@@ -102,20 +102,22 @@ FIM_CENA
 
 #### Palavras-chave Teatrais
 
-- `scene` — Início do programa (marca o início da cena)
+- `CENA` — Início do programa (marca o início da cena) - **case-sensitive, deve ser MAIÚSCULAS**
 - `FIM_CENA` — Fim do programa (marca o fim da cena)
-- `character` — Declara um personagem/ator
-- `memory:` — Bloco de declaração de variáveis do personagem
-- `FIM_MEMORY` — Fim do bloco de declarações
+- `PERSONAGEM` — Declara um personagem/ator - **case-sensitive, deve ser MAIÚSCULAS**
+- `MEMORIA:` — Bloco de declaração de variáveis do personagem - **case-sensitive, deve ser MAIÚSCULAS**
+- `FIM_MEMORIA` — Fim do bloco de declarações
 
 #### Comandos
 
 - `LEIA` — Comando de leitura de variável
-- `says` — Comando de escrita teatral (ex: `Personagem says valor;`)
+- `DIZ` — Comando de escrita teatral (ex: `Personagem DIZ valor;`) - **case-sensitive, deve ser MAIÚSCULAS**
 
-#### Tipos
+#### Tipos (Padrão Banco de Dados)
 
-- `number` — Tipo numérico (suporta inteiros e reais)
+- `VARCHAR` — Tipo string/texto (aceita qualquer valor, incluindo números como string)
+- `INT` — Tipo inteiro (aceita apenas números inteiros, rejeita letras)
+- `FLOAT` — Tipo real (aceita números inteiros ou decimais, rejeita letras)
 
 #### Operadores Aritméticos
 
@@ -140,7 +142,9 @@ FIM_CENA
 - **Números reais:** parte inteira, ponto decimal obrigatório e parte fracionária.
 - **Espaços em branco:** ignorados exceto como separadores de tokens.
 - **Comentários:** iniciados com `//` e continuam até o fim da linha.
-- **Variáveis:** devem ser declaradas no bloco `memory:` antes do uso.
+- **Variáveis:** devem ser declaradas no bloco `MEMORIA:` antes do uso.
+- **Case-sensitive:** O compilador é case-sensitive - todas as palavras reservadas devem ser em MAIÚSCULAS.
+- **Validação de tipos:** Variáveis `INT` e `FLOAT` rejeitam letras no comando `LEIA`, enquanto `VARCHAR` aceita qualquer valor.
 
 ---
 
@@ -149,17 +153,17 @@ FIM_CENA
 Gramática completa da linguagem DRAMATICA em EBNF:
 
 ```ebnf
-<programa> ::= "scene" IDENTIFICADOR ":" <personagem> <comandos> "FIM_CENA"
+<programa> ::= "CENA" IDENTIFICADOR ":" <personagem> <comandos> "FIM_CENA"
 
-<personagem> ::= "character" IDENTIFICADOR ":" <declaracao_variaveis>
+<personagem> ::= "PERSONAGEM" IDENTIFICADOR ":" <declaracao_variaveis>
 
-<declaracao_variaveis> ::= "memory" ":" <lista_declaracoes> "FIM_MEMORY"
+<declaracao_variaveis> ::= "MEMORIA" ":" <lista_declaracoes> "FIM_MEMORIA"
                          | ε
 
 <lista_declaracoes> ::= <declaracao> <lista_declaracoes>
                       | <declaracao>
 
-<declaracao> ::= IDENTIFICADOR ":" "number" ";"
+<declaracao> ::= IDENTIFICADOR ":" ("VARCHAR" | "INT" | "FLOAT") ";"
 
 <comandos> ::= <comando> <comandos>
              | <comando>
@@ -170,7 +174,7 @@ Gramática completa da linguagem DRAMATICA em EBNF:
 
 <comando_leitura> ::= "LEIA" IDENTIFICADOR ";"
 
-<comando_escrita> ::= IDENTIFICADOR "says" <expressao> ";"
+<comando_escrita> ::= IDENTIFICADOR "DIZ" <expressao> ";"
 
 <comando_atribuicao> ::= IDENTIFICADOR "=" <expressao> ";"
 
@@ -365,7 +369,7 @@ O arquivo `parser.py` implementa um parser descendente recursivo que constrói a
 - **`Personagem`:** Contém nome e declarações de variáveis.
 - **`Declaracao`:** Representa declaração de variável com nome e tipo.
 - **`ComandoLeitura`:** Comando `LEIA`.
-- **`ComandoEscrita`:** Comando `Personagem says expressao`.
+- **`ComandoEscrita`:** Comando `Personagem diz expressao`.
 - **`ComandoAtribuicao`:** Atribuição `variavel = expressao`.
 - **`ExpressaoSimples`:** Expressões com operadores `+` e `-`.
 - **`Termo`:** Termos com operadores `*` e `/`.
@@ -386,7 +390,7 @@ O arquivo `interpreter.py` percorre a AST e executa o programa:
 - **Inicialização:** Processa declarações de variáveis e inicializa com valor padrão (0).
 - **Execução de comandos:**
   - `LEIA`: Lê valor da entrada simulada e atribui à variável.
-  - `says`: Avalia expressão e imprime o valor.
+  - `diz`: Avalia expressão e imprime o valor.
   - Atribuição: Avalia expressão e atribui à variável.
 - **Avaliação de expressões:** Respeita precedência de operadores (`^` > `*`, `/` > `+`, `-`).
 
@@ -414,18 +418,18 @@ O arquivo `interpreter.py` percorre a AST e executa o programa:
 ### Exemplo 1: Soma Simples
 
 ```dramatica
-scene Soma:
-    character Calculadora:
-        memory:
-            a: number;
-            b: number;
-            resultado: number;
-        FIM_MEMORY
+CENA Soma:
+    PERSONAGEM Calculadora:
+        MEMORIA:
+            a: INT;
+            b: INT;
+            resultado: INT;
+        FIM_MEMORIA
 
     LEIA a;
     LEIA b;
     resultado = a + b;
-    Calculadora says resultado;
+    Calculadora DIZ resultado;
 FIM_CENA
 ```
 
@@ -433,63 +437,117 @@ FIM_CENA
 ```
 === EXECUÇÃO DA CENA: Soma ===
 Personagem: Calculadora
-Declarada: a: NUMBER
-Declarada: b: NUMBER
-Declarada: resultado: NUMBER
+Declarada: a: INT
+Declarada: b: INT
+Declarada: resultado: INT
 LEIA a -> 10
 LEIA b -> 20
 resultado = 30
-Calculadora says: 30
+Calculadora diz: 30
 ```
 
 ### Exemplo 2: Operação de Subtração
 
 ```dramatica
-scene Subtracao:
-    character Operador:
-        memory:
-            num1: number;
-            num2: number;
-            diferenca: number;
-        FIM_MEMORY
+CENA Subtracao:
+    PERSONAGEM Operador:
+        MEMORIA:
+            num1: INT;
+            num2: INT;
+            diferenca: INT;
+        FIM_MEMORIA
 
     LEIA num1;
     LEIA num2;
     diferenca = num1 - num2;
-    Operador says diferenca;
+    Operador DIZ diferenca;
 FIM_CENA
 ```
 
 ### Exemplo 3: Expressão Matemática Complexa
 
 ```dramatica
-scene Matematica:
-    character Matematico:
-        memory:
-            x: number;
-            y: number;
-            z: number;
-        FIM_MEMORY
+CENA Matematica:
+    PERSONAGEM Matematico:
+        MEMORIA:
+            x: FLOAT;
+            y: FLOAT;
+            z: FLOAT;
+        FIM_MEMORIA
 
     LEIA x;
     LEIA y;
     z = x + y * 2;
-    Matematico says z;
+    Matematico DIZ z;
 FIM_CENA
 ```
 
 ### Exemplo 4: Programa Mínimo (Sem Variáveis)
 
 ```dramatica
-scene Minimo:
-    character Ator:
-        memory:
-        FIM_MEMORY
+CENA Minimo:
+    PERSONAGEM Ator:
+        MEMORIA:
+        FIM_MEMORIA
 
     LEIA a;
-    Ator says a;
+    Ator DIZ a;
 FIM_CENA
 ```
+
+### Exemplo 5: Validação de Tipos
+
+Este exemplo demonstra como os tipos VARCHAR, INT e FLOAT funcionam com validação rigorosa:
+
+```dramatica
+CENA ValidacaoTipos:
+    PERSONAGEM Validador:
+        MEMORIA:
+            nome: VARCHAR;
+            idade: INT;
+            altura: FLOAT;
+        FIM_MEMORIA
+
+    LEIA nome;    // VARCHAR aceita qualquer valor
+    LEIA idade;   // INT aceita apenas números inteiros
+    LEIA altura;  // FLOAT aceita números (inteiros ou decimais)
+    
+    Validador DIZ nome;
+    Validador DIZ idade;
+    Validador DIZ altura;
+FIM_CENA
+```
+
+**Comportamento:**
+- **VARCHAR:** Aceita `"João"`, `"123"`, `"abc"` - qualquer valor é aceito como string
+- **INT:** Aceita `25`, `100` - rejeita `"abc"` ou `"25.5"` (gera erro)
+- **FLOAT:** Aceita `1.75`, `100` - rejeita `"xyz"` (gera erro)
+
+### Exemplo 6: VARCHAR Aceita Números
+
+Demonstra que VARCHAR pode receber números, mas eles são tratados como texto:
+
+```dramatica
+CENA VarcharNumero:
+    PERSONAGEM Processador:
+        MEMORIA:
+            codigo: VARCHAR;
+            numero: VARCHAR;
+        FIM_MEMORIA
+
+    LEIA codigo;   // Pode receber "ABC123" ou "123"
+    LEIA numero;   // Pode receber "42" (número como string)
+    
+    Processador DIZ codigo;
+    Processador DIZ numero;
+FIM_CENA
+```
+
+**Entrada válida:**
+- `codigo: "ABC123"` ou `codigo: "123"`
+- `numero: "42"` ou `numero: "abc"`
+
+Ambos são aceitos porque VARCHAR aceita qualquer valor.
 
 ---
 
@@ -506,10 +564,11 @@ Para documentação detalhada de cada etapa do projeto, consulte o arquivo **[RE
 
 ## Requisitos Acadêmicos Atendidos
 
-✅ **Palavras-chave para início e fim:** `scene` e `FIM_CENA`  
-✅ **Cabeçalho para declaração de variáveis:** `memory:` dentro de `character`  
-✅ **Tipos numéricos:** `number` (suporta inteiros e reais)  
-✅ **Comandos de escrita e leitura:** `LEIA` e `Personagem says`  
+✅ **Palavras-chave para início e fim:** `CENA` e `FIM_CENA` (case-sensitive)  
+✅ **Cabeçalho para declaração de variáveis:** `MEMORIA:` dentro de `PERSONAGEM` (case-sensitive)  
+✅ **Tipos de dados:** `VARCHAR`, `INT`, `FLOAT` (padrão banco de dados, com validação rigorosa)  
+✅ **Comandos de escrita e leitura:** `LEIA` e `Personagem DIZ` (case-sensitive)  
+✅ **Validação de tipos:** `INT` e `FLOAT` rejeitam letras, `VARCHAR` aceita qualquer valor  
 ✅ **Operações de adição e subtração:** `+` e `-` (também `*`, `/`, `^`)  
 ✅ **Atribuição:** `=` com um ou dois operandos  
 ✅ **Símbolo de pontuação:** `;` ao final de cada comando  

@@ -1,0 +1,29 @@
+// Exemplo demonstrando que VARCHAR aceita números (como string)
+// Este exemplo mostra que VARCHAR pode receber números, mas eles são tratados como texto
+
+CENA VarcharNumero:
+    PERSONAGEM Processador:
+        MEMORIA:
+            codigo: VARCHAR;
+            numero: VARCHAR;
+        FIM_MEMORIA
+
+    // VARCHAR aceita números - eles serão tratados como texto
+    LEIA codigo;
+    LEIA numero;
+    
+    // Concatenação de strings (se necessário)
+    Processador DIZ codigo;
+    Processador DIZ numero;
+FIM_CENA
+
+// TESTES:
+// Entrada válida:
+//   codigo: "ABC123" (texto)
+//   numero: "42" (número como string - VARCHAR aceita)
+//
+// Entrada também válida:
+//   codigo: "123"
+//   numero: "456"
+// Ambos são aceitos porque VARCHAR aceita qualquer valor
+

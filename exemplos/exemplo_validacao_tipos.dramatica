@@ -1,0 +1,35 @@
+// Exemplo demonstrando validação de tipos em DRAMATICA
+// Este exemplo mostra como os tipos VARCHAR, INT e FLOAT funcionam
+
+CENA ValidacaoTipos:
+    PERSONAGEM Validador:
+        MEMORIA:
+            nome: VARCHAR;
+            idade: INT;
+            altura: FLOAT;
+        FIM_MEMORIA
+
+    // VARCHAR aceita qualquer valor (texto ou números como string)
+    LEIA nome;
+    
+    // INT aceita apenas números inteiros (rejeita letras)
+    LEIA idade;
+    
+    // FLOAT aceita números (inteiros ou decimais, rejeita letras)
+    LEIA altura;
+    
+    Validador DIZ nome;
+    Validador DIZ idade;
+    Validador DIZ altura;
+FIM_CENA
+
+// TESTES:
+// Entrada válida:
+//   nome: "João" ou "123" (VARCHAR aceita ambos)
+//   idade: 25 (INT aceita números inteiros)
+//   altura: 1.75 (FLOAT aceita números decimais)
+//
+// Entrada inválida (gera erro):
+//   idade: "abc" -> ERRO: variável 'idade' é do tipo INT, mas recebeu valor não numérico
+//   altura: "xyz" -> ERRO: variável 'altura' é do tipo FLOAT, mas recebeu valor não numérico
+

@@ -1,12 +1,12 @@
 // Exemplo mínimo em DRAMATICA
 // Programa sem declaração de variáveis (memory opcional)
 
-scene Minimo:
-    character Ator:
-        memory:
-        FIM_MEMORY
+CENA Minimo:
+    PERSONAGEM Ator:
+        MEMORIA:
+        FIM_MEMORIA
 
     LEIA a;
-    Ator says a;
+    Ator DIZ a;
 FIM_CENA
 

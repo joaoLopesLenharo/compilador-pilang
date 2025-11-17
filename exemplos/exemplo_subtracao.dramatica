@@ -1,17 +1,17 @@
 // Exemplo com subtração em DRAMATICA
 // Demonstra operação de subtração conforme requisitos
 
-scene Subtracao:
-    character Operador:
-        memory:
-            num1: number;
-            num2: number;
-            diferenca: number;
-        FIM_MEMORY
+CENA Subtracao:
+    PERSONAGEM Operador:
+        MEMORIA:
+            num1: INT;
+            num2: INT;
+            diferenca: INT;
+        FIM_MEMORIA
 
     LEIA num1;
     LEIA num2;
     diferenca = num1 - num2;
-    Operador says diferenca;
+    Operador DIZ diferenca;
 FIM_CENA
 

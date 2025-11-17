@@ -1,17 +1,17 @@
 // Exemplo matemático em DRAMATICA
 // Cena que realiza operações matemáticas
 
-scene Matematica:
-    character Matematico:
-        memory:
-            x: number;
-            y: number;
-            z: number;
-        FIM_MEMORY
+CENA Matematica:
+    PERSONAGEM Matematico:
+        MEMORIA:
+            x: FLOAT;
+            y: FLOAT;
+            z: FLOAT;
+        FIM_MEMORIA
 
     LEIA x;
     LEIA y;
     z = x + y;
-    Matematico says z;
+    Matematico DIZ z;
 FIM_CENA
 

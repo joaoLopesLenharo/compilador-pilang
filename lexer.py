@@ -40,6 +40,10 @@ class Lexer:
         if char == '/':
             return self.estado_comentario()
         
+        # Strings (aspas duplas)
+        elif char == '"':
+            return self.estado_string()
+        
         # Letras - podem ser palavras reservadas ou identificadores
         elif char.isalpha():
             return self.estado_palavra()
@@ -49,7 +53,7 @@ class Lexer:
             return self.estado_numero()
         
         # Operadores e símbolos
-        elif char in '+-*/^=:;()':
+        elif char in '+-*/^=:;()[]{}"\'!,.>':
             return self.estado_operador()
         
         # Caractere inválido
@@ -80,6 +84,34 @@ class Lexer:
             # Era apenas um '/', retorna operador de divisão
             # O primeiro '/' já foi consumido, então retornamos o token correto
             return Token(TipoToken.OP_DIVISAO, '/', linha_inicial, coluna_inicial)
+    
+    def estado_string(self):
+        """Estado para reconhecimento de strings entre aspas duplas"""
+        linha_inicial = self.linha
+        coluna_inicial = self.coluna
+        lexema = '"'  # Inclui a aspas inicial
+        
+        # Consome a aspas inicial
+        self.avancar()
+        
+        # Consome caracteres até encontrar a aspas de fechamento
+        while self.proximo_caractere() != '"' and self.proximo_caractere() != '\0':
+            # Se encontrar quebra de linha sem fechar aspas, é erro
+            if self.proximo_caractere() == '\n':
+                token = Token(TipoToken.ERRO, lexema, linha_inicial, coluna_inicial)
+                return token
+            
+            lexema += self.proximo_caractere()
+            self.avancar()
+        
+        # Verifica se encontrou a aspas de fechamento
+        if self.proximo_caractere() == '"':
+            lexema += '"'  # Inclui a aspas final
+            self.avancar()
+            return Token(TipoToken.STRING, lexema, linha_inicial, coluna_inicial)
+        else:
+            # String não fechada (fim de arquivo)
+            return Token(TipoToken.ERRO, lexema, linha_inicial, coluna_inicial)
     
     def estado_palavra(self):
         """Estado para reconhecimento de palavras reservadas e identificadores"""
@@ -164,6 +196,28 @@ class Lexer:
             return Token(TipoToken.PARENTESE_ESQ, '(', linha_inicial, coluna_inicial)
         elif char == ')':
             return Token(TipoToken.PARENTESE_DIR, ')', linha_inicial, coluna_inicial)
+        elif char == '[':
+            return Token(TipoToken.COLCHETE_ESQ, '[', linha_inicial, coluna_inicial)
+        elif char == ']':
+            return Token(TipoToken.COLCHETE_DIR, ']', linha_inicial, coluna_inicial)
+        elif char == '{':
+            return Token(TipoToken.CHAVE_ESQ, '{', linha_inicial, coluna_inicial)
+        elif char == '}':
+            return Token(TipoToken.CHAVE_DIR, '}', linha_inicial, coluna_inicial)
+        elif char == ',':
+            return Token(TipoToken.VIRGULA, ',', linha_inicial, coluna_inicial)
+        elif char == '.':
+            return Token(TipoToken.PONTO, '.', linha_inicial, coluna_inicial)
+        elif char == '!':
+            return Token(TipoToken.EXCLAMACAO, '!', linha_inicial, coluna_inicial)
+        elif char == '>':
+            return Token(TipoToken.MAIOR_QUE, '>', linha_inicial, coluna_inicial)
+        elif char == '"':
+            # Aspas duplas são tratadas em estado_string(), mas incluímos aqui como fallback
+            return Token(TipoToken.ASPAS_DUPLAS, '"', linha_inicial, coluna_inicial)
+        elif char == "'":
+            # Aspas simples (pode ser usado em alguns contextos)
+            return Token(TipoToken.ASPAS_DUPLAS, "'", linha_inicial, coluna_inicial)
     
     def proximo_token(self):
         """Método principal que retorna o próximo token"""
