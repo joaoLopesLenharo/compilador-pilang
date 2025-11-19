@@ -5,7 +5,7 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from tokens import TipoToken
 from lexer import Lexer
-from parser import Parser, ErroSintatico, ComandoLeitura, ComandoEscrita, ComandoAtribuicao
+from parser import Parser, ErroSintatico, ErroSemantico, ComandoLeitura, ComandoEscrita, ComandoAtribuicao
 from interpreter import InterpretadorPiLang
 
 app = Flask(__name__)
@@ -113,6 +113,12 @@ def analise_sintatica_codigo():
         output += f"Linha: {e.linha}, Coluna: {e.coluna}\n"
         output += f"Mensagem: {e.mensagem}\n"
         return jsonify({'status': 'erro', 'output': output})
+    except ErroSemantico as e:
+        output = "=== ERRO SEMÂNTICO ===\n\n"
+        if e.linha is not None and e.coluna is not None:
+            output += f"Linha: {e.linha}, Coluna: {e.coluna}\n"
+        output += f"Mensagem: {e.mensagem}\n"
+        return jsonify({'status': 'erro', 'output': output})
     except Exception as e:
         return jsonify({'status': 'erro', 'output': f"Erro durante análise sintática:\n{str(e)}"})
 
@@ -146,6 +152,15 @@ def analisar_codigo():
             'mensagem': e.mensagem,
             'linha': e.linha,
             'coluna': e.coluna
+        })
+    except ErroSemantico as e:
+        # Captura o erro semântico e o formata para o frontend
+        return jsonify({
+            'status': 'erro',
+            'tipo': 'semantico',
+            'mensagem': e.mensagem,
+            'linha': e.linha if e.linha else None,
+            'coluna': e.coluna if e.coluna else None
         })
     except Exception as e:
         # Captura qualquer outro erro inesperado
@@ -244,6 +259,12 @@ def executar_codigo():
 
     except ErroSintatico as e:
         output = f"Erro de Sintaxe na linha {e.linha}, coluna {e.coluna}:\n{e.mensagem}"
+        return jsonify({'status': 'erro', 'output': output})
+    except ErroSemantico as e:
+        output = "=== ERRO SEMÂNTICO ===\n\n"
+        if e.linha is not None and e.coluna is not None:
+            output += f"Linha: {e.linha}, Coluna: {e.coluna}\n"
+        output += f"Mensagem: {e.mensagem}\n"
         return jsonify({'status': 'erro', 'output': output})
     except Exception as e:
         return jsonify({'status': 'erro', 'output': f"Erro de execução:\n{str(e)}"})

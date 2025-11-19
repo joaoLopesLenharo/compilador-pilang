@@ -27,8 +27,10 @@ class Comando:
 
 
 class ComandoLeitura(Comando):
-    def __init__(self, variavel: str):
+    def __init__(self, variavel: str, linha: int = None, coluna: int = None):
         self.variavel = variavel
+        self.linha = linha
+        self.coluna = coluna
 
 
 class ComandoEscrita(Comando):
@@ -38,9 +40,11 @@ class ComandoEscrita(Comando):
 
 
 class ComandoAtribuicao(Comando):
-    def __init__(self, variavel: str, expressao: 'Expressao'):
+    def __init__(self, variavel: str, expressao: 'Expressao', linha: int = None, coluna: int = None):
         self.variavel = variavel
         self.expressao = expressao
+        self.linha = linha
+        self.coluna = coluna
 
 
 class Expressao:
@@ -63,9 +67,11 @@ class Fator:
 
 
 class Elemento:
-    def __init__(self, valor: Union[str, int, float, 'Expressao'], tipo: str):
+    def __init__(self, valor: Union[str, int, float, 'Expressao'], tipo: str, linha: int = None, coluna: int = None):
         self.valor = valor
         self.tipo = tipo  # 'IDENTIFICADOR', 'NUM_INTEIRO', 'NUM_REAL', 'STRING', 'EXPRESSAO'
+        self.linha = linha
+        self.coluna = coluna
 
 class ErroSintatico(Exception):
     def __init__(self, mensagem: str, linha: int, coluna: int):
@@ -74,11 +80,25 @@ class ErroSintatico(Exception):
         self.coluna = coluna
         super().__init__(f"Erro sintático na linha {linha}, coluna {coluna}: {mensagem}")
 
+class ErroSemantico(Exception):
+    def __init__(self, mensagem: str, linha: int = None, coluna: int = None):
+        self.mensagem = mensagem
+        self.linha = linha
+        self.coluna = coluna
+        if linha is not None and coluna is not None:
+            super().__init__(f"Erro semântico na linha {linha}, coluna {coluna}: {mensagem}")
+        else:
+            super().__init__(f"Erro semântico: {mensagem}")
+
 class Parser:
     def __init__(self, tokens: List[Token]):
         self.tokens = tokens
         self.posicao = 0
         self.token_atual = self.tokens[0] if tokens else None
+        self.nivel_cena = 0  # Rastreia aninhamento de blocos CENA
+        self.nivel_memoria = 0  # Rastreia aninhamento de blocos MEMORIA
+        self.variaveis_declaradas = {}  # Dicionário: nome_variavel -> (tipo, linha_declaracao)
+        self.nome_personagem = None  # Nome do personagem atual
         
     def avancar(self):
         """Avança para o próximo token"""
@@ -118,8 +138,17 @@ class Parser:
     
     def parser_programa(self) -> Programa:
         """<programa> ::= CENA IDENTIFICADOR : <personagem> <comandos> FIM_CENA"""
+        # Verifica se já estamos dentro de uma CENA (aninhamento não permitido)
+        if self.nivel_cena > 0:
+            raise ErroSemantico(
+                "Bloco CENA não pode ser declarado dentro de outro bloco CENA",
+                self.token_atual.linha,
+                self.token_atual.coluna
+            )
+        
         # Consome cena
         self.consumir(TipoToken.CENA, "Esperado 'CENA' no início do programa")
+        self.nivel_cena += 1
         
         # Nome da cena
         nome_cena_token = self.consumir(TipoToken.IDENTIFICADOR, "Esperado nome da cena após 'CENA'")
@@ -136,6 +165,7 @@ class Parser:
         
         # Consome FIM_CENA
         self.consumir(TipoToken.FIM_CENA, "Esperado 'FIM_CENA' no final do programa")
+        self.nivel_cena -= 1
         
         return Programa(nome_cena, personagem, comandos)
     
@@ -147,6 +177,7 @@ class Parser:
         # Nome do personagem
         nome_token = self.consumir(TipoToken.IDENTIFICADOR, "Esperado nome do personagem")
         nome = nome_token.lexema
+        self.nome_personagem = nome  # Armazena o nome do personagem
         
         # Dois pontos
         self.consumir(TipoToken.DOIS_PONTOS, "Esperado ':' após nome do personagem")
@@ -164,8 +195,17 @@ class Parser:
         if not self.verificar(TipoToken.MEMORIA):
             return declaracoes
         
+        # Verifica se já estamos dentro de um bloco MEMORIA (aninhamento não permitido)
+        if self.nivel_memoria > 0:
+            raise ErroSemantico(
+                "Bloco MEMORIA não pode ser declarado dentro de outro bloco MEMORIA",
+                self.token_atual.linha,
+                self.token_atual.coluna
+            )
+        
         # Consome memoria
         self.consumir(TipoToken.MEMORIA, "Esperado 'MEMORIA'")
+        self.nivel_memoria += 1
         
         # Dois pontos
         self.consumir(TipoToken.DOIS_PONTOS, "Esperado ':' após 'MEMORIA'")
@@ -175,6 +215,7 @@ class Parser:
         
         # Consome FIM_MEMORIA
         self.consumir(TipoToken.FIM_MEMORIA, "Esperado 'FIM_MEMORIA' após declarações")
+        self.nivel_memoria -= 1
         
         return declaracoes
     
@@ -195,18 +236,31 @@ class Parser:
         nome_token = self.consumir(TipoToken.IDENTIFICADOR, "Esperado identificador na declaração")
         nome = nome_token.lexema
         
+        # Verifica se a variável já foi declarada
+        if nome in self.variaveis_declaradas:
+            linha_original, tipo_original = self.variaveis_declaradas[nome]
+            raise ErroSemantico(
+                f"Variável '{nome}' já foi declarada na linha {linha_original} com tipo {tipo_original}",
+                nome_token.linha,
+                nome_token.coluna
+            )
+        
         # Dois pontos
         self.consumir(TipoToken.DOIS_PONTOS, "Esperado ':' após identificador")
         
         # Tipo (VARCHAR, INT ou FLOAT)
         tipo = None
+        tipo_token = None
         if self.verificar(TipoToken.VARCHAR):
+            tipo_token = self.token_atual
             self.avancar()
             tipo = "VARCHAR"
         elif self.verificar(TipoToken.INT):
+            tipo_token = self.token_atual
             self.avancar()
             tipo = "INT"
         elif self.verificar(TipoToken.FLOAT):
+            tipo_token = self.token_atual
             self.avancar()
             tipo = "FLOAT"
         else:
@@ -216,8 +270,19 @@ class Parser:
                 self.token_atual.coluna
             )
         
+        # Valida que o tipo foi especificado
+        if tipo is None:
+            raise ErroSemantico(
+                f"Variável '{nome}' declarada sem tipo",
+                nome_token.linha,
+                nome_token.coluna
+            )
+        
         # Ponto e vírgula
         self.consumir(TipoToken.PONTO_VIRGULA, "Esperado ';' após declaração")
+        
+        # Registra a variável declarada
+        self.variaveis_declaradas[nome] = (nome_token.linha, tipo)
         
         return Declaracao(nome, tipo)
     
@@ -227,13 +292,41 @@ class Parser:
         
         # Continua enquanto houver comandos válidos (até encontrar FIM_CENA ou EOF)
         while (not self.verificar(TipoToken.EOF) and
-               not self.verificar(TipoToken.FIM_CENA) and
-               (self.verificar(TipoToken.LEIA) or 
-                self.verificar(TipoToken.DIZ) or 
-                self.verificar(TipoToken.IDENTIFICADOR))):
+               not self.verificar(TipoToken.FIM_CENA)):
             
-            comando = self.parser_comando()
-            comandos.append(comando)
+            # Verifica se há um bloco MEMORIA fora do lugar (após comandos começarem)
+            if self.verificar(TipoToken.MEMORIA):
+                raise ErroSemantico(
+                    "Bloco MEMORIA deve ser declarado antes dos comandos, dentro do bloco PERSONAGEM",
+                    self.token_atual.linha,
+                    self.token_atual.coluna
+                )
+            
+            # Verifica se há uma nova CENA (aninhamento não permitido)
+            if self.verificar(TipoToken.CENA):
+                raise ErroSemantico(
+                    "Bloco CENA não pode ser declarado dentro de outro bloco CENA",
+                    self.token_atual.linha,
+                    self.token_atual.coluna
+                )
+            
+            # Verifica se há um novo PERSONAGEM (apenas um personagem por cena)
+            if self.verificar(TipoToken.PERSONAGEM):
+                raise ErroSemantico(
+                    "Apenas um PERSONAGEM pode ser declarado por CENA",
+                    self.token_atual.linha,
+                    self.token_atual.coluna
+                )
+            
+            # Verifica se há comandos válidos
+            if (self.verificar(TipoToken.LEIA) or 
+                self.verificar(TipoToken.DIZ) or 
+                self.verificar(TipoToken.IDENTIFICADOR)):
+                comando = self.parser_comando()
+                comandos.append(comando)
+            else:
+                # Token inesperado, mas não é FIM_CENA nem EOF
+                break
         
         return comandos
     
@@ -256,20 +349,32 @@ class Parser:
     
     def parser_comando_leitura(self) -> ComandoLeitura:
         """<comando_leitura> ::= LEIA IDENTIFICADOR ;"""
+        leia_token = self.token_atual
         self.consumir(TipoToken.LEIA, "Esperado 'LEIA'")
         
         variavel_token = self.consumir(TipoToken.IDENTIFICADOR, "Esperado identificador após LEIA")
         variavel = variavel_token.lexema
         
+        # Verifica se a variável foi declarada (validação será feita na validação semântica)
+        # Aqui apenas armazenamos informação para validação posterior
+        
         self.consumir(TipoToken.PONTO_VIRGULA, "Esperado ';' após comando LEIA")
         
-        return ComandoLeitura(variavel)
+        return ComandoLeitura(variavel, variavel_token.linha, variavel_token.coluna)
     
     def parser_comando_escrita(self) -> ComandoEscrita:
         """<comando_escrita> ::= IDENTIFICADOR DIZ <expressao> ;"""
         # Nome do personagem
         personagem_token = self.consumir(TipoToken.IDENTIFICADOR, "Esperado nome do personagem")
         personagem = personagem_token.lexema
+        
+        # Verifica se o personagem usado no DIZ é o mesmo declarado
+        if self.nome_personagem and personagem != self.nome_personagem:
+            raise ErroSemantico(
+                f"Personagem '{personagem}' usado no comando DIZ não corresponde ao personagem declarado '{self.nome_personagem}'",
+                personagem_token.linha,
+                personagem_token.coluna
+            )
         
         # diz
         self.consumir(TipoToken.DIZ, "Esperado 'DIZ' após nome do personagem")
@@ -293,7 +398,7 @@ class Parser:
         
         self.consumir(TipoToken.PONTO_VIRGULA, "Esperado ';' após expressão")
         
-        return ComandoAtribuicao(variavel, expressao)
+        return ComandoAtribuicao(variavel, expressao, variavel_token.linha, variavel_token.coluna)
     
     def parser_expressao(self) -> Expressao:
         """<expressao> ::= <expressao_simples>"""
@@ -353,30 +458,35 @@ class Parser:
     def parser_elemento(self) -> Elemento:
         """<elemento> ::= IDENTIFICADOR | NUM_INTEIRO | NUM_REAL | STRING | ( <expressao> )"""
         if self.verificar(TipoToken.IDENTIFICADOR):
-            valor = self.token_atual.lexema
+            token = self.token_atual
+            valor = token.lexema
             self.avancar()
-            return Elemento(valor, "IDENTIFICADOR")
+            return Elemento(valor, "IDENTIFICADOR", token.linha, token.coluna)
         
         elif self.verificar(TipoToken.NUM_INTEIRO):
-            valor = int(self.token_atual.lexema)
+            token = self.token_atual
+            valor = int(token.lexema)
             self.avancar()
-            return Elemento(valor, "NUM_INTEIRO")
+            return Elemento(valor, "NUM_INTEIRO", token.linha, token.coluna)
         
         elif self.verificar(TipoToken.NUM_REAL):
-            valor = float(self.token_atual.lexema)
+            token = self.token_atual
+            valor = float(token.lexema)
             self.avancar()
-            return Elemento(valor, "NUM_REAL")
+            return Elemento(valor, "NUM_REAL", token.linha, token.coluna)
         
         elif self.verificar(TipoToken.STRING):
-            valor = self.token_atual.lexema
+            token = self.token_atual
+            valor = token.lexema
             self.avancar()
-            return Elemento(valor, "STRING")
+            return Elemento(valor, "STRING", token.linha, token.coluna)
         
         elif self.verificar(TipoToken.PARENTESE_ESQ):
+            token = self.token_atual
             self.avancar()
             expressao = self.parser_expressao()
             self.consumir(TipoToken.PARENTESE_DIR, "Esperado ')' após expressão")
-            return Elemento(expressao, "EXPRESSAO")
+            return Elemento(expressao, "EXPRESSAO", token.linha, token.coluna)
         
         else:
             raise ErroSintatico(
@@ -387,11 +497,70 @@ class Parser:
     
     # ... (início do arquivo parser.py)
 
+    def validar_semantica(self, programa: Programa):
+        """Valida regras semânticas do programa"""
+        # Coleta todas as variáveis declaradas
+        variaveis_declaradas = set()
+        for decl in programa.personagem.declaracoes:
+            variaveis_declaradas.add(decl.nome)
+        
+        # Valida comandos
+        for comando in programa.comandos:
+            if isinstance(comando, ComandoLeitura):
+                if comando.variavel not in variaveis_declaradas:
+                    raise ErroSemantico(
+                        f"Variável '{comando.variavel}' não foi declarada antes do uso no comando LEIA",
+                        comando.linha,
+                        comando.coluna
+                    )
+            elif isinstance(comando, ComandoAtribuicao):
+                if comando.variavel not in variaveis_declaradas:
+                    raise ErroSemantico(
+                        f"Variável '{comando.variavel}' não foi declarada antes do uso na atribuição",
+                        comando.linha,
+                        comando.coluna
+                    )
+                # Valida variáveis na expressão
+                self._validar_variaveis_expressao(comando.expressao, variaveis_declaradas)
+            elif isinstance(comando, ComandoEscrita):
+                # Valida variáveis na expressão
+                self._validar_variaveis_expressao(comando.expressao, variaveis_declaradas)
+    
+    def _validar_variaveis_expressao(self, expressao: Expressao, variaveis_declaradas: set):
+        """Valida se todas as variáveis usadas na expressão foram declaradas"""
+        if isinstance(expressao, ExpressaoSimples):
+            for operador, termo in expressao.termos:
+                self._validar_variaveis_termo(termo, variaveis_declaradas)
+    
+    def _validar_variaveis_termo(self, termo: Termo, variaveis_declaradas: set):
+        """Valida variáveis em um termo"""
+        for operador, fator in termo.fatores:
+            self._validar_variaveis_fator(fator, variaveis_declaradas)
+    
+    def _validar_variaveis_fator(self, fator: Fator, variaveis_declaradas: set):
+        """Valida variáveis em um fator"""
+        for operador, elemento in fator.elementos:
+            self._validar_variaveis_elemento(elemento, variaveis_declaradas)
+    
+    def _validar_variaveis_elemento(self, elemento: Elemento, variaveis_declaradas: set):
+        """Valida variáveis em um elemento"""
+        if elemento.tipo == 'IDENTIFICADOR':
+            if elemento.valor not in variaveis_declaradas:
+                raise ErroSemantico(
+                    f"Variável '{elemento.valor}' não foi declarada antes do uso na expressão",
+                    elemento.linha,
+                    elemento.coluna
+                )
+        elif elemento.tipo == 'EXPRESSAO':
+            self._validar_variaveis_expressao(elemento.valor, variaveis_declaradas)
+    
     def parse(self) -> Programa:
         """Método principal que inicia a análise sintática.
-        Lança ErroSintatico em caso de falha."""
-        # Removemos o bloco try/except para que a exceção seja propagada para a API
-        return self.parser_programa()
+        Lança ErroSintatico ou ErroSemantico em caso de falha."""
+        programa = self.parser_programa()
+        # Validação semântica após parsing completo
+        self.validar_semantica(programa)
+        return programa
 
 # ... (resto do arquivo)
     

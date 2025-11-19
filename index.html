@@ -112,6 +112,12 @@
                     if(result.linha) {
                         feedbackDiv.textContent += ` (Linha: ${result.linha}, Coluna: ${result.coluna})`;
                     }
+                    if(result.tipo === 'semantico') {
+                        feedbackDiv.textContent = `Erro Semântico: ${result.mensagem}`;
+                        if(result.linha) {
+                            feedbackDiv.textContent += ` (Linha: ${result.linha}, Coluna: ${result.coluna})`;
+                        }
+                    }
                 } catch (error) {
                     feedbackDiv.textContent = 'Erro de conexão com o servidor de análise.';
                     feedbackDiv.className = 'feedback-erro';
