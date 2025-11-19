@@ -63,3 +63,6 @@ Thumbs.db
 # Arquivos específicos do projeto
 compilador.rar
 
+# Documentação detalhada (não deve subir pro github)
+explicacoes_detalhadas.md
+

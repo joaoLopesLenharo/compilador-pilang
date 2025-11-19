@@ -59,22 +59,175 @@ compilador/
 
 ---
 
+## Instalação e Configuração
+
+### Pré-requisitos
+
+- **Python 3.7 ou superior** (recomendado Python 3.9+)
+- **pip** (gerenciador de pacotes Python)
+- **Navegador web moderno** (Chrome, Firefox, Edge, Safari)
+
+### Passo a Passo de Instalação
+
+#### 1. Clone ou Baixe o Projeto
+
+Se você tem o projeto em um repositório Git:
+
+```bash
+git clone <url-do-repositorio>
+cd compilador
+```
+
+Ou simplesmente extraia o arquivo ZIP do projeto para uma pasta.
+
+#### 2. Crie um Ambiente Virtual (Recomendado)
+
+Criar um ambiente virtual isola as dependências do projeto:
+
+**Windows:**
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+
+**Linux/Mac:**
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+Após ativar o ambiente virtual, você verá `(venv)` no início da linha do terminal.
+
+#### 3. Instale as Dependências
+
+Com o ambiente virtual ativado, instale as dependências necessárias:
+
+```bash
+pip install -r requirements.txt
+```
+
+Isso instalará:
+- **Flask** (framework web)
+- **flask-cors** (permissão de requisições cross-origin)
+
+#### 4. Verifique a Instalação
+
+Teste se tudo está funcionando:
+
+```bash
+python -c "from lexer import Lexer; print('Lexer OK')"
+python -c "from parser import Parser; print('Parser OK')"
+python -c "from interpreter import InterpretadorPiLang; print('Interpreter OK')"
+```
+
+Se todos os comandos executarem sem erros, a instalação foi bem-sucedida!
+
+---
+
 ## Como Executar
 
 ### Interface Web (Recomendado)
+
+1. **Inicie o servidor Flask:**
 
 ```bash
 python app.py
 ```
 
-Acesse `http://localhost:5000` no navegador para usar a interface interativa.
+2. **Acesse no navegador:**
 
-### Modo CLI
+Abra seu navegador e acesse: `http://localhost:5000`
+
+3. **Use a interface:**
+
+- Digite ou cole código DRAMATICA no editor
+- Clique em "Analisar" para verificar erros léxicos e sintáticos
+- Clique em "Executar" para rodar o programa
+- Use o dropdown "Carregar Exemplo" para testar programas pré-configurados
+
+**Nota:** O servidor ficará rodando até você pressionar `Ctrl+C` no terminal.
+
+### Modo CLI (Linha de Comando)
+
+Para testar componentes individuais:
 
 ```bash
-python test_lexer.py      # Testa análise léxica
-python test_parser.py     # Testa análise sintática
+# Testa análise léxica
+python test_lexer.py
+
+# Testa análise sintática  
+python test_parser.py
 ```
+
+### Executar um Programa DRAMATICA
+
+Você também pode executar programas diretamente via Python:
+
+```python
+from lexer import Lexer
+from parser import Parser
+from interpreter import InterpretadorPiLang
+
+# Código DRAMATICA
+codigo = """
+CENA Teste:
+    PERSONAGEM Calculadora:
+        MEMORIA:
+            a: INT;
+            b: INT;
+        FIM_MEMORIA
+    LEIA a;
+    LEIA b;
+    Calculadora DIZ a;
+FIM_CENA
+"""
+
+# Análise léxica
+lexer = Lexer(codigo)
+tokens, erros = lexer.tokenizar()
+
+if erros:
+    print("Erros léxicos:", erros)
+else:
+    # Análise sintática
+    parser = Parser(tokens)
+    ast = parser.parse()
+    
+    # Execução
+    interpretador = InterpretadorPiLang()
+    interpretador.definir_entrada([10, 20])  # Valores para LEIA
+    interpretador.executar_programa(ast)
+```
+
+---
+
+## Solução de Problemas
+
+### Erro: "ModuleNotFoundError: No module named 'flask'"
+
+**Solução:** Instale as dependências:
+```bash
+pip install -r requirements.txt
+```
+
+### Erro: "Address already in use" ao iniciar o servidor
+
+**Solução:** Outro processo está usando a porta 5000. Pare o processo ou mude a porta em `app.py`:
+```python
+app.run(port=5001)  # Use outra porta
+```
+
+### Erro: "python: command not found"
+
+**Solução:** 
+- Windows: Use `py` ao invés de `python`
+- Linux/Mac: Use `python3` ao invés de `python`
+
+### Ambiente virtual não ativa
+
+**Solução:**
+- Windows: Certifique-se de usar `venv\Scripts\activate` (não `venv/Scripts/activate`)
+- Linux/Mac: Certifique-se de usar `source venv/bin/activate`
 
 ---
 
