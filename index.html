@@ -24,6 +24,11 @@
         button.secondary:hover { background-color: #1976D2; }
         button.help { background-color: #FF9800; }
         button.help:hover { background-color: #F57C00; }
+        .compilation-buttons { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+        .compile-btn { background-color: #9C27B0; color: white; padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        .compile-btn:hover { background-color: #7B1FA2; }
+        .compile-btn.primary { background-color: #4CAF50; }
+        .compile-btn.primary:hover { background-color: #45a049; }
         label { margin-top: 15px; font-weight: bold; color: #555; }
         .button-group { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
         select { padding: 8px 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
@@ -62,7 +67,11 @@
             <textarea id="codigo" placeholder="Escreva seu código DRAMATICA aqui..."></textarea>
             <div id="feedback">Digite seu código para começar.</div>
 
-            <button onclick="executarCodigo()">Executar</button>
+            <div class="compilation-buttons">
+                <button class="compile-btn" onclick="tokenizarCodigo()">Tokenizar</button>
+                <button class="compile-btn" onclick="analiseSintatica()">Análise Sintática</button>
+                <button class="compile-btn primary" onclick="executarCodigo()">Compilar/Executar</button>
+            </div>
         </div>
         <div class="output-area">
             <label for="output">Terminal de Saída:</label>
@@ -110,10 +119,70 @@
             }, 500);
         });
 
+        // Tokenização do código
+        async function tokenizarCodigo() {
+            const codigo = editorCodigo.value;
+            outputDiv.textContent = 'Tokenizando...\n';
+            outputDiv.classList.remove('aguardando-entrada');
+            inputLine.style.display = 'none';
+            sessionId = null;
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/tokenizar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ codigo })
+                });
+                const result = await response.json();
+                outputDiv.textContent = result.output || 'Erro desconhecido.';
+                if (result.status === 'sucesso') {
+                    feedbackDiv.textContent = 'Tokenização concluída com sucesso!';
+                    feedbackDiv.className = 'feedback-sucesso';
+                } else {
+                    feedbackDiv.textContent = 'Erro durante tokenização.';
+                    feedbackDiv.className = 'feedback-erro';
+                }
+            } catch (error) {
+                outputDiv.textContent = 'Erro de conexão com o servidor.';
+                feedbackDiv.textContent = 'Erro de conexão.';
+                feedbackDiv.className = 'feedback-erro';
+            }
+        }
+
+        // Análise sintática do código
+        async function analiseSintatica() {
+            const codigo = editorCodigo.value;
+            outputDiv.textContent = 'Realizando análise sintática...\n';
+            outputDiv.classList.remove('aguardando-entrada');
+            inputLine.style.display = 'none';
+            sessionId = null;
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/analise_sintatica', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ codigo })
+                });
+                const result = await response.json();
+                outputDiv.textContent = result.output || 'Erro desconhecido.';
+                if (result.status === 'sucesso') {
+                    feedbackDiv.textContent = 'Análise sintática concluída com sucesso!';
+                    feedbackDiv.className = 'feedback-sucesso';
+                } else {
+                    feedbackDiv.textContent = 'Erro durante análise sintática.';
+                    feedbackDiv.className = 'feedback-erro';
+                }
+            } catch (error) {
+                outputDiv.textContent = 'Erro de conexão com o servidor.';
+                feedbackDiv.textContent = 'Erro de conexão.';
+                feedbackDiv.className = 'feedback-erro';
+            }
+        }
+
         // Execução do código
         async function executarCodigo() {
             codigoAtual = editorCodigo.value;
-            outputDiv.textContent = 'Executando...\n';
+            outputDiv.textContent = 'Compilando e executando...\n';
             outputDiv.classList.remove('aguardando-entrada');
             inputLine.style.display = 'none';
             sessionId = null;
@@ -136,16 +205,27 @@
                     inputTerminal.placeholder = `Digite o valor para ${variavel} e pressione Enter...`;
                     inputTerminal.focus();
                     inputTerminal.value = '';
+                    feedbackDiv.textContent = 'Aguardando entrada do usuário...';
+                    feedbackDiv.className = 'feedback-sucesso';
                 } else {
                     // Execução completa ou erro
                     outputDiv.textContent = result.output;
                     outputDiv.classList.remove('aguardando-entrada');
                     inputLine.style.display = 'none';
+                    if (result.status === 'sucesso') {
+                        feedbackDiv.textContent = 'Compilação e execução concluídas com sucesso!';
+                        feedbackDiv.className = 'feedback-sucesso';
+                    } else {
+                        feedbackDiv.textContent = 'Erro durante compilação/execução.';
+                        feedbackDiv.className = 'feedback-erro';
+                    }
                 }
             } catch (error) {
                 outputDiv.textContent = 'Erro de conexão com o servidor de execução.';
                 outputDiv.classList.remove('aguardando-entrada');
                 inputLine.style.display = 'none';
+                feedbackDiv.textContent = 'Erro de conexão.';
+                feedbackDiv.className = 'feedback-erro';
             }
         }
 

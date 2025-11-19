@@ -5,7 +5,7 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from tokens import TipoToken
 from lexer import Lexer
-from parser import Parser, ErroSintatico, ComandoLeitura
+from parser import Parser, ErroSintatico, ComandoLeitura, ComandoEscrita, ComandoAtribuicao
 from interpreter import InterpretadorPiLang
 
 app = Flask(__name__)
@@ -26,6 +26,95 @@ def servir_arquivo(arquivo):
         return send_from_directory('.', arquivo)
     except Exception as e:
         return jsonify({'erro': str(e)}), 404 
+
+@app.route('/tokenizar', methods=['POST'])
+def tokenizar_codigo():
+    """Endpoint para realizar apenas a tokenização do código."""
+    data = request.get_json()
+    codigo = data.get('codigo', '')
+
+    if not codigo.strip():
+        return jsonify({'status': 'erro', 'output': 'Digite seu código para começar.'})
+
+    try:
+        # Análise Léxica
+        lexer = Lexer(codigo)
+        tokens, erros_lexicos = lexer.tokenizar()
+        
+        if erros_lexicos:
+            output = "=== ERROS LÉXICOS ===\n"
+            output += '\n'.join(erros_lexicos)
+            output += "\n\n=== TOKENS ENCONTRADOS ATÉ O ERRO ===\n"
+            for token in tokens:
+                output += str(token) + '\n'
+            return jsonify({'status': 'erro', 'output': output})
+        
+        # Formata os tokens para exibição
+        output = "=== TOKENIZAÇÃO CONCLUÍDA ===\n"
+        output += f"Total de tokens encontrados: {len(tokens)}\n\n"
+        output += "=== LISTA DE TOKENS ===\n"
+        for i, token in enumerate(tokens, 1):
+            output += f"{i:3d}. {str(token)}\n"
+        
+        return jsonify({'status': 'sucesso', 'output': output})
+
+    except Exception as e:
+        return jsonify({'status': 'erro', 'output': f"Erro durante tokenização:\n{str(e)}"})
+
+@app.route('/analise_sintatica', methods=['POST'])
+def analise_sintatica_codigo():
+    """Endpoint para realizar análise sintática (requer tokens válidos)."""
+    data = request.get_json()
+    codigo = data.get('codigo', '')
+
+    if not codigo.strip():
+        return jsonify({'status': 'erro', 'output': 'Digite seu código para começar.'})
+
+    try:
+        # 1. Análise Léxica (necessária para análise sintática)
+        lexer = Lexer(codigo)
+        tokens, erros_lexicos = lexer.tokenizar()
+        if erros_lexicos:
+            output = "=== ERRO: Não é possível realizar análise sintática com erros léxicos ===\n\n"
+            output += "Erros léxicos encontrados:\n"
+            output += '\n'.join(erros_lexicos)
+            return jsonify({'status': 'erro', 'output': output})
+
+        # 2. Análise Sintática
+        parser = Parser(tokens)
+        ast = parser.parse()
+
+        # Formata informações da AST
+        output = "=== ANÁLISE SINTÁTICA CONCLUÍDA ===\n\n"
+        output += f"Cena: {ast.nome_cena}\n"
+        output += f"Personagem: {ast.personagem.nome}\n\n"
+        
+        if ast.personagem.declaracoes:
+            output += "=== DECLARAÇÕES DE VARIÁVEIS ===\n"
+            for decl in ast.personagem.declaracoes:
+                output += f"  {decl.nome}: {decl.tipo}\n"
+            output += "\n"
+        
+        output += f"=== COMANDOS ENCONTRADOS: {len(ast.comandos)} ===\n"
+        for i, comando in enumerate(ast.comandos, 1):
+            if isinstance(comando, ComandoLeitura):
+                output += f"{i}. LEIA {comando.variavel}\n"
+            elif isinstance(comando, ComandoEscrita):
+                output += f"{i}. {comando.personagem} DIZ [expressão]\n"
+            elif isinstance(comando, ComandoAtribuicao):
+                output += f"{i}. {comando.variavel} = [expressão]\n"
+        
+        output += "\n✓ Sintaxe válida! O código está pronto para compilação/execução."
+        
+        return jsonify({'status': 'sucesso', 'output': output})
+
+    except ErroSintatico as e:
+        output = "=== ERRO DE SINTAXE ===\n\n"
+        output += f"Linha: {e.linha}, Coluna: {e.coluna}\n"
+        output += f"Mensagem: {e.mensagem}\n"
+        return jsonify({'status': 'erro', 'output': output})
+    except Exception as e:
+        return jsonify({'status': 'erro', 'output': f"Erro durante análise sintática:\n{str(e)}"})
 
 @app.route('/analisar', methods=['POST'])
 def analisar_codigo():
